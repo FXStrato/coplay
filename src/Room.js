@@ -9,8 +9,10 @@ class Room extends Component {
   state = {
     room: this.props.match.params.roomID,
     uid: null,
+    isAdmin: false,
     open: false,
     playing: false,
+    initPlaying: false,
     url: "",
     nowPlaying: null,
     results: [],
@@ -25,8 +27,13 @@ class Room extends Component {
     firebase.auth().onAuthStateChanged((user) => {
       if (user) {
         // User is signed in.
-        console.log('Acquired ID of user', user.uid);
         this.setState({uid: user.uid});
+        firebase.database().ref('associations/' + user.uid).once('value').then((snapshot) => {
+          if(snapshot.val()) {
+            let isAdmin = (snapshot.val().room === this.state.room ? true : false);
+            this.setState({isAdmin: isAdmin});
+          }
+        });
         // ...
       } else {
         // User is signed out.
@@ -38,18 +45,60 @@ class Room extends Component {
 
   componentDidMount = () => {
     document.getElementById("default-tab").click();
-    // return firebase.database().ref('room/' + this.state.room).once('value').then((snapshot) => {
-    //   console.log(snapshot.val());
-    // });
-    return firebase.database().ref('room/' + this.state.room + '/nowplaying').once('value').then((snapshot) => {
+    this.queueRef = firebase.database().ref('room/' + this.state.room + '/queue');
+    this.nowPlayingRef = firebase.database().ref('room/' + this.state.room + '/nowplaying');
+    this.nowPlayingRef.once('value').then((snapshot) => {
       if(!snapshot.val()) {
         this.handleSongEnd();
       } else {
-        let key = Object.keys(snapshot.val())[0];
-        let temp = "https://www.youtube.com/v/" + snapshot.val()[key].id + "?playlist=" + snapshot.val()[key].id + "&autoplay=1&rel=0";
-        this.setState({url: temp, nowPlaying: snapshot.val()[key]});
+        if(this.state.isAdmin && snapshot.val().playing) {
+          //Set it to false, since it got loaded and admin should control when it begins and stops
+          firebase.database().ref('room/' + this.state.room + '/nowplaying').update({
+            id: snapshot.val().id,
+            title: snapshot.val().title,
+            duration : snapshot.val().duration,
+            thumbnail: snapshot.val().thumbnail,
+            playedSeconds: snapshot.val().playedSeconds,
+            playing: false,
+          });
+        }
+        let temp = "https://www.youtube.com/v/" + snapshot.val().id + "?playlist=" + snapshot.val().id + "&autoplay=1&rel=0";
+        this.setState({url: temp, nowPlaying: snapshot.val()});
       }
     });
+    //Set listener on nowPlaying, just check for if it's playing or not (for non admins)
+    this.nowPlayingRef.on('value', (snapshot) => {
+      if(snapshot.val()) {
+        let temp = "https://www.youtube.com/v/" + snapshot.val().id + "?playlist=" + snapshot.val().id + "&autoplay=1&rel=0";
+        this.setState({url: temp, playing: snapshot.val().playing, nowPlaying: snapshot.val()})
+      } else {
+        //no more song in nowPlaying, clear it out
+        this.setState({url: null, nowPlaying: null, playing: false})
+      }
+    })
+    //Listener for queue; update it whenever someone adds songs
+    this.queueRef.on('value', (snapshot) => {
+      this.getQueueList(snapshot.val());
+    })
+  }
+
+  componentWillUnmount = () => {
+    if(this.state.isAdmin) {
+      firebase.database().ref('room/' + this.state.room + '/nowplaying').update({
+        id: this.state.nowPlaying.id,
+        title: this.state.nowPlaying.title,
+        duration : this.state.nowPlaying.duration,
+        thumbnail: this.state.nowPlaying.thumbnail,
+        playedSeconds: this.state.nowPlaying.playedSeconds,
+        playing: false,
+      });
+    }
+    this.nowPlayingRef.off();
+    this.queueRef.off();
+  }
+
+  ref = player => {
+    this.player = player;
   }
 
   openTab = (event, tab) => {
@@ -70,10 +119,12 @@ class Room extends Component {
    document.getElementById(tab).style.display = "block";
    event.currentTarget.className += " is-active";
 
-   //Run stuff based on which tab got selected
    if(tab === "q") {
-     //Queue tab, load queue from firebase
-     this.getQueueList();
+     firebase.database().ref('room/' + this.state.room + '/queue').once('value').then((snapshot) => {
+       if(snapshot.val()) {
+         this.getQueueList(snapshot.val());
+       }
+     });
    }
   }
 
@@ -118,12 +169,47 @@ class Room extends Component {
 
   //Update firebase with progress of the now playing song
   handleProgress = (data) => {
-    console.log(data);
+    if(this.state.isAdmin) {
+      if(this.state.playing) {
+        let nowPlaying = {
+          id: this.state.nowPlaying.id,
+          title: this.state.nowPlaying.title,
+          duration : this.state.nowPlaying.duration,
+          thumbnail: this.state.nowPlaying.thumbnail,
+          playedSeconds: data.playedSeconds,
+          playing: true,
+        }
+        let updates = {};
+        updates['room/' + this.state.room + '/nowplaying/'] = nowPlaying;
+        this.setState({nowPlaying: nowPlaying});
+        return firebase.database().ref().update(updates);
+      }
+    }
   }
 
   handlePlay = (play) => {
-    if(play === "toggle") this.setState({playing: !this.state.playing});
-     else this.setState({playing: play});
+    if(!this.state.initPlaying) {
+      this.setState({initPlaying: true});
+      this.player.seekTo(parseFloat(this.state.nowPlaying.playedSeconds));
+    }
+    let isPlaying = true;
+    if(play === "toggle") {
+      if(this.state.playing) {
+        isPlaying = false;
+      }
+      this.setState({playing: !this.state.playing});
+    } else {
+      isPlaying = play;
+      this.setState({playing: play});
+    }
+    firebase.database().ref('room/' + this.state.room + '/nowplaying').update({
+      id: this.state.nowPlaying.id,
+      title: this.state.nowPlaying.title,
+      duration : this.state.nowPlaying.duration,
+      thumbnail: this.state.nowPlaying.thumbnail,
+      playedSeconds: this.state.nowPlaying.playedSeconds,
+      playing: isPlaying,
+    });
   }
 
   //Add to queue; if nowplaying is empty, add whatever was queued to nowplaying
@@ -133,6 +219,7 @@ class Room extends Component {
       title: title,
       duration : duration,
       thumbnail: thumbnail,
+      playedSeconds: 0,
     }).then(() => {
       console.log('Successfully added song to queue');
       this.setState({selectloadingindex: -1});
@@ -155,38 +242,38 @@ class Room extends Component {
   //Remove whatever is in now playing, replace with first thing from queue, remove from queue, add to history, and
   //then begin song
   handleSongEnd = () => {
-    firebase.database().ref('room/' + this.state.room + '/nowplaying').remove();
-    //Acquire first thing from queue
-    let queueItem;
-    let queueID;
-    firebase.database().ref('room/' + this.state.room + '/queue').once('value').then((snapshot) => {
-      if(snapshot.val()) {
-        //Make sure there's something in the queue
-        queueItem = snapshot.val()[Object.keys(snapshot.val())[0]];
-        queueID = Object.keys(snapshot.val())[0];
-        queueItem.isPlaying = true;
-        firebase.database().ref('room/' + this.state.room + '/nowplaying').push({
-          id: queueItem.id,
-          title: queueItem.title,
-          duration : queueItem.duration,
-          thumbnail: queueItem.thumbnail,
-        }).then(() => {
-          //Now remove song from queue
-          console.log('Successfully added first song in queue to now playing');
-          firebase.database().ref('room/' + this.state.room + '/queue/' + queueID).remove();
-          //Create url for ReactPlayer
-          let temp = "https://www.youtube.com/v/" + queueItem.id + "?playlist=" + queueItem.id + "&autoplay=1&rel=0";
-          this.setState({url: temp, nowPlaying: queueItem});
-        })
-      } else {
-        //if nothing in queue, display helper text to add stuff to queue to play songs
-        this.setState({url: "", nowPlaying: null});
-      }
-    });
-
-    // nowPlayingRef.once('value').then((snapshot) => {
-    //
-    // });
+    if(this.state.isAdmin) {
+      firebase.database().ref('room/' + this.state.room + '/nowplaying').remove();
+      //Acquire first thing from queue
+      let queueItem;
+      let queueID;
+      firebase.database().ref('room/' + this.state.room + '/queue').once('value').then((snapshot) => {
+        if(snapshot.val()) {
+          //Make sure there's something in the queue
+          queueItem = snapshot.val()[Object.keys(snapshot.val())[0]];
+          queueID = Object.keys(snapshot.val())[0];
+          queueItem.isPlaying = true;
+          firebase.database().ref('room/' + this.state.room + '/nowplaying').update({
+            id: queueItem.id,
+            title: queueItem.title,
+            duration : queueItem.duration,
+            thumbnail: queueItem.thumbnail,
+            playedSeconds: queueItem.playedSeconds,
+            playing: true,
+          }).then(() => {
+            //Now remove song from queue
+            console.log('Successfully added first song in queue to now playing');
+            firebase.database().ref('room/' + this.state.room + '/queue/' + queueID).remove();
+            //Create url for ReactPlayer
+            let temp = "https://www.youtube.com/v/" + queueItem.id + "?playlist=" + queueItem.id + "&autoplay=1&rel=0";
+            this.setState({url: temp, nowPlaying: queueItem, nowPlayingKey: queueID});
+          })
+        } else {
+          //if nothing in queue, display helper text to add stuff to queue to play songs
+          this.setState({url: "", nowPlaying: null, nowPlayingKey: null});
+        }
+      });
+    }
   }
 
   //Formate the results to display nicely within a table
@@ -214,32 +301,36 @@ class Room extends Component {
     this.setState({formattedResults: results, searchloading: false});
   }
 
-  getQueueList = () => {
-    return firebase.database().ref('room/' + this.state.room + '/queue').once('value').then((snapshot) => {
-      let results = _.map(snapshot.val(), (el, index) => {
-        return (
-          <tr key={'queue-' + el.id + '-' + index}>
-            <td>
-              <nav className="level">
-                <div className="level-left">
-                  <div className="level-item">
-                    <div className="image">
-                      <img src={el.thumbnail} alt={el.id + '-thumbnail'}/>
-                    </div>
-                  </div>
-                  <div className="level-item">
-                    {el.title} <br/>
-                    {el.duration}
+  getQueueList = (data) => {
+    let results = _.map(data, (el, index) => {
+      return (
+        <tr key={'queue-' + el.id + '-' + index}>
+          <td>
+            <nav className="level">
+              <div className="level-left">
+                <div className="level-item">
+                  <div className="image">
+                    <img src={el.thumbnail} alt={el.id + '-thumbnail'}/>
                   </div>
                 </div>
-                <div className="level-right"></div>
-              </nav>
-            </td>
-          </tr>
-        )
-      })
-      this.setState({formattedQueue: results});
-    });
+                <div className="level-item">
+                  {el.title} <br/>
+                  {el.duration}
+                </div>
+              </div>
+              <div className="level-right">
+                {this.state.isAdmin &&
+                <div className="level-item">
+                  <a className="button"><i className="fa fa-trash"></i></a>
+                </div>
+                }
+              </div>
+            </nav>
+          </td>
+        </tr>
+      )
+    })
+    this.setState({formattedQueue: results});
   }
 
   render() {
@@ -274,6 +365,7 @@ class Room extends Component {
                     </div>
                   </div>
                   <div className="level-right">
+                    {this.state.isAdmin &&
                     <div className="level-item">
                       <div className="content has-text-centered">
                         <a className="button" onClick={() => this.handlePlay('toggle')}>{this.state.playing ? "Pause" : "Play"}</a>
@@ -281,10 +373,11 @@ class Room extends Component {
                         <a className="button" onClick={this.handleSongEnd}>Skip</a>
                       </div>
                     </div>
+                    }
                   </div>
                 </nav>
                 }
-                <ReactPlayer width="100%" url={this.state.url} playing={this.state.playing} progressFrequency={500} onProgress={this.handleProgress} onPlay={() => this.handlePlay(true)} onPause={() => this.handlePlay(false)} onEnded={this.handleSongEnd} />
+                <ReactPlayer ref={this.ref} style={this.state.isAdmin ? {pointerEvents: 'auto'} : {pointerEvents: 'none'}} width="100%" url={this.state.url} playing={this.state.playing} progressFrequency={500} onProgress={this.handleProgress} controls={this.state.isAdmin} onPlay={() => this.handlePlay(true)} onPause={() => this.handlePlay(false)} onEnded={this.handleSongEnd} />
               </div>
               <div className="column">
                 <form onSubmit={this.handleSearch}>
@@ -315,6 +408,18 @@ class Room extends Component {
                   <i className="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
                   <span className="sr-only">Loading...</span>
                 </div>
+                }
+                {this.state.isAdmin && this.state.formattedQueue.length > 0 ?
+                <nav className="level">
+                  <div className="level-left"></div>
+                  <div className="level-right">
+                    <div className="level-item">
+                      <a className="button is-danger">Delete All</a>
+                    </div>
+                  </div>
+                </nav>
+                :
+                null
                 }
                 <table className="table is-narrow is-hoverable is-fullwidth">
                   <tbody>
