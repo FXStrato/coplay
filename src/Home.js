@@ -6,7 +6,8 @@ import randomize from 'randomatic';
 class Home extends Component {
   state = {
     uid: null,
-    isAssociated: null,
+    ownRoom: null,
+    rooms: {}
   }
 
   componentWillMount = () => {
@@ -16,11 +17,14 @@ class Home extends Component {
         //console.log('Acquired ID of user on Home.js', user.uid);
         //Check to see if association of room exists
         firebase.database().ref('associations/' + user.uid).once('value').then((snapshot) => {
-          if(!snapshot.val()) {
+          console.log(snapshot.val());
+          if(!snapshot.val() || !snapshot.val().ownRoom) {
             //Means not associated
-            this.setState({isAssociated: false});
+            this.setState({ownRoom: false});
+          } else if(snapshot.val().ownRoom) {
+            this.setState({ownRoom: snapshot.val().ownRoom});
           } else {
-            this.setState({isAssociated: snapshot.val().room})
+            console.log(snapshot.val());
           }
         });
         this.setState({uid: user.uid});
@@ -33,16 +37,16 @@ class Home extends Component {
     });
   }
 
-  createAssociation = () => {
+  createRoom = () => {
     let roomName = randomize('Aa0', 16);
-    if(!this.state.isAssociated) {
-      firebase.database().ref('associations/' + this.state.uid).update({
-        room: roomName
+    if(!this.state.ownRoom) {
+      firebase.database().ref('associations/' + this.state.uid).set({
+        ownRoom: roomName
       }).then((response) => {
         this.props.history.push('room/' + roomName);
       });
     } else {
-      this.props.history.push('room/' + this.state.isAssociated);
+      this.props.history.push('room/' + this.state.ownRoom);
     }
   }
 
@@ -57,8 +61,8 @@ class Home extends Component {
           </div>
           <div className="columns">
             <div className="column">
-              {this.state.isAssociated !== null &&
-              <a onClick={this.createAssociation} className="button is-dark">{this.state.isAssociated ? 'Go To Room' : 'Create Room'}</a>
+              {this.state.ownRoom !== null &&
+              <a onClick={this.createRoom} className="button is-dark">{this.state.ownRoom ? 'Go To Room' : 'Create Room'}</a>
               }
             </div>
           </div>

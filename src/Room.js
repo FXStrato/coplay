@@ -18,6 +18,9 @@ class Room extends Component {
     results: [],
     formattedResults: [],
     formattedQueue: [],
+    formattedHistory: [],
+    queueConfirmAll: false,
+    historyConfirmAll: false,
     searchinput: "",
     searchloading: false,
     selectloadingindex: -1,
@@ -30,7 +33,8 @@ class Room extends Component {
         this.setState({uid: user.uid});
         firebase.database().ref('associations/' + user.uid).once('value').then((snapshot) => {
           if(snapshot.val()) {
-            let isAdmin = (snapshot.val().room === this.state.room ? true : false);
+            let isAdmin = false;
+            if(snapshot.val().ownRoom === this.state.room) isAdmin = true;
             this.setState({isAdmin: isAdmin});
           }
         });
@@ -46,6 +50,7 @@ class Room extends Component {
   componentDidMount = () => {
     document.getElementById("default-tab").click();
     this.queueRef = firebase.database().ref('room/' + this.state.room + '/queue');
+    this.historyRef = firebase.database().ref('room/' + this.state.room + '/history');
     this.nowPlayingRef = firebase.database().ref('room/' + this.state.room + '/nowplaying');
     this.nowPlayingRef.once('value').then((snapshot) => {
       if(!snapshot.val()) {
@@ -80,10 +85,14 @@ class Room extends Component {
     this.queueRef.on('value', (snapshot) => {
       this.getQueueList(snapshot.val());
     })
+
+    this.historyRef.on('value', (snapshot) => {
+      this.getHistoryList(snapshot.val());
+    })
   }
 
   componentWillUnmount = () => {
-    if(this.state.isAdmin) {
+    if(this.state.isAdmin && this.state.nowPlaying) {
       firebase.database().ref('room/' + this.state.room + '/nowplaying').update({
         id: this.state.nowPlaying.id,
         title: this.state.nowPlaying.title,
@@ -123,6 +132,12 @@ class Room extends Component {
      firebase.database().ref('room/' + this.state.room + '/queue').once('value').then((snapshot) => {
        if(snapshot.val()) {
          this.getQueueList(snapshot.val());
+       }
+     });
+   } else if(tab === "h") {
+     firebase.database().ref('room/' + this.state.room + '/history').once('value').then((snapshot) => {
+       if(snapshot.val()) {
+         this.getHistoryList(snapshot.val());
        }
      });
    }
@@ -165,6 +180,25 @@ class Room extends Component {
     }).catch((err) => {
       console.log('Error obtaining search results', err);
     })
+  }
+
+  handleDelete = (type, id) => {
+    if(type === 'q') {
+      //Means its deleting from queue
+      firebase.database().ref('room/' + this.state.room + '/queue/' + id).remove();
+    } else {
+      firebase.database().ref('room/' + this.state.room + '/history/' + id).remove();
+    }
+  }
+
+  handleDeleteAll = (type) => {
+    if(type === 'q') {
+      firebase.database().ref('room/' + this.state.room + '/queue/').remove();
+      this.setState({queueConfirmAll: false});
+    } else {
+      firebase.database().ref('room/' + this.state.room + '/history/').remove();
+      this.setState({historyConfirmAll: false});
+    }
   }
 
   //Update firebase with progress of the now playing song
@@ -264,6 +298,13 @@ class Room extends Component {
             //Now remove song from queue
             console.log('Successfully added first song in queue to now playing');
             firebase.database().ref('room/' + this.state.room + '/queue/' + queueID).remove();
+            //Add song to history
+            firebase.database().ref('room/' + this.state.room + '/history/').push({
+              id: queueItem.id,
+              title: queueItem.title,
+              duration : queueItem.duration,
+              thumbnail: queueItem.thumbnail,
+            });
             //Create url for ReactPlayer
             let temp = "https://www.youtube.com/v/" + queueItem.id + "?playlist=" + queueItem.id + "&autoplay=1&rel=0";
             this.setState({url: temp, nowPlaying: queueItem, nowPlayingKey: queueID});
@@ -321,7 +362,7 @@ class Room extends Component {
               <div className="level-right">
                 {this.state.isAdmin &&
                 <div className="level-item">
-                  <a className="button"><i className="fa fa-trash"></i></a>
+                  <a className="button" onClick={() => this.handleDelete('q', el.id)}><i className="fa fa-trash"></i></a>
                 </div>
                 }
               </div>
@@ -333,13 +374,68 @@ class Room extends Component {
     this.setState({formattedQueue: results});
   }
 
+  getHistoryList = (data) => {
+    let results = _.map(data, (el, index) => {
+      return (
+        <tr key={'history-' + el.id + '-' + index}>
+          <td>
+            <nav className="level">
+              <div className="level-left">
+                <div className="level-item">
+                  <div className="image">
+                    <img src={el.thumbnail} alt={el.id + '-thumbnail'}/>
+                  </div>
+                </div>
+                <div className="level-item">
+                  {el.title} <br/>
+                  {el.duration}
+                </div>
+              </div>
+              <div className="level-right">
+                {this.state.isAdmin &&
+                <div className="level-item">
+                  <a className="button" onClick={() => this.handleDelete('h', el.id)}><i className="fa fa-trash"></i></a>
+                </div>
+                }
+              </div>
+            </nav>
+          </td>
+        </tr>
+      )
+    })
+    this.setState({formattedHistory: _.reverse(results)});
+  }
+
   render() {
     return (
       <section className="section">
         <div className="container">
           <div className="columns">
             <div className="column">
-              <h1 className="title">Room</h1>
+              <nav className="level">
+                <div className="level-left"></div>
+                <div className="level-right">
+                  <div className="level-item">
+                    <div className="field is-grouped is-grouped-multiline">
+                      <div className="control">
+                        <div className="tags has-addons">
+                          <span className="tag is-dark">npm</span>
+                          <span className="tag is-info">0.5.0</span>
+                        </div>
+                      </div>
+                        {this.state.isAdmin &&
+                        <div className="control">
+                          <div className="tags has-addons">
+                            <span className="tag is-dark">Level</span>
+                            <span className="tag is-info">Admin</span>
+                          </div>
+                        </div>
+                        }
+                    </div>
+                  </div>
+                </div>
+              </nav>
+
             </div>
           </div>
           <div className="columns">
@@ -411,15 +507,30 @@ class Room extends Component {
                 }
                 {this.state.isAdmin && this.state.formattedQueue.length > 0 ?
                 <nav className="level">
-                  <div className="level-left"></div>
+                  <div className="level-left">
+
+                  </div>
                   <div className="level-right">
+                    {this.state.queueConfirmAll &&
+                      <div className="level-item">
+                        <a className="button is-primary" onClick={() => this.handleDeleteAll('q')}>Confirm</a>
+                      </div>
+                    }
+                    {this.state.queueConfirmAll &&
+                      <div className="level-item">
+                        <a className="button is-light" onClick={() => this.setState({queueConfirmAll: false})}>Cancel</a>
+                      </div>
+                    }
                     <div className="level-item">
-                      <a className="button is-danger">Delete All</a>
+                      <a className="button is-danger" disabled={this.state.queueConfirmAll ? true : false} onClick={() => this.setState({queueConfirmAll: true})}>Delete All</a>
                     </div>
                   </div>
                 </nav>
                 :
                 null
+                }
+                {this.state.formattedQueue.length < 1 &&
+                <div className="has-text-centered">No queue to display</div>
                 }
                 <table className="table is-narrow is-hoverable is-fullwidth">
                   <tbody>
@@ -432,8 +543,43 @@ class Room extends Component {
           <div id="h" className="tab-content">
             <div className="columns">
               <div className="column">
-                <h3>Tokyo</h3>
-                <p>Tokyo is the capital of Japan.</p>
+                {!this.state.formattedHistory &&
+                <div className="has-text-centered">
+                  <i className="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
+                  <span className="sr-only">Loading...</span>
+                </div>
+                }
+                {this.state.isAdmin && this.state.formattedHistory.length > 0 ?
+                <nav className="level">
+                  <div className="level-left">
+                  </div>
+                  <div className="level-right">
+                    {this.state.historyConfirmAll &&
+                      <div className="level-item">
+                        <a className="button is-primary" onClick={() => this.handleDeleteAll('h')}>Confirm</a>
+                      </div>
+                    }
+                    {this.state.historyConfirmAll &&
+                      <div className="level-item">
+                        <a className="button is-light" onClick={() => this.setState({historyConfirmAll: false})}>Cancel</a>
+                      </div>
+                    }
+                    <div className="level-item">
+                      <a className="button is-danger" disabled={this.state.historyConfirmAll ? true : false} onClick={() => this.setState({historyConfirmAll: true})}>Delete All</a>
+                    </div>
+                  </div>
+                </nav>
+                :
+                null
+                }
+                {this.state.formattedHistory.length < 1 &&
+                <div className="has-text-centered">No history to display</div>
+                }
+                <table className="table is-narrow is-hoverable is-fullwidth">
+                  <tbody>
+                    {this.state.formattedHistory}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
