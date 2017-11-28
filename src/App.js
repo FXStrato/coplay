@@ -22,7 +22,7 @@ class App extends Component {
   render() {
     return (
       <div>
-        <header><Navigation/></header>
+        <header><Navigation history={this.props.history}/></header>
         <main>
           <Switch>
             <Route exact path="/" component={Home}/>

@@ -56,9 +56,28 @@ class Navigation extends Component {
     });
   }
 
-  createRoom = () => {
-    //If creating room, check if public or private. If private, dont add it under room list
+  componentDidMount = () => {
+    this.assocRef = firebase.database().ref('associations/');
+    this.assocRef.on('value', (snapshot) => {
+      if(snapshot.val()) {
+        if(snapshot.val()[this.state.uid] && snapshot.val()[this.state.uid].ownRoom) {
+          //ownRoom found
+          this.setState({ownRoom: snapshot.val()[this.state.uid].ownRoom});
+        } else {
+          this.setState({ownRoom: false});
+        }
+      } else {
+        this.setState({ownRoom: false});
+      }
+    })
+  }
 
+  componentWillUnmount = () => {
+    this.assocRef.off();
+  }
+
+  createRoom = () => {
+    //Created rooms are initially private
     let roomName = randomize('Aa0', 16);
     if(!this.state.ownRoom) {
       firebase.database().ref('associations/' + this.state.uid).set({
@@ -93,7 +112,7 @@ class Navigation extends Component {
             this.state.ownRoom ?
             <Link to={'/room/' + this.state.ownRoom} className="navbar-item">My Room</Link>
             :
-            <div className="navbar-item" onClick={this.createRoom}>Create Room</div>
+            <a className="navbar-item" onClick={this.createRoom}>Create Room</a>
             :
             null
           }
