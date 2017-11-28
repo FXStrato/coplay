@@ -1,0 +1,60 @@
+[debug] [2017-11-28T00:06:07.355Z] ----------------------------------------------------------------------
+[debug] [2017-11-28T00:06:07.358Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\jz5822\AppData\Roaming\npm\node_modules\firebase-tools\bin\firebase login
+[debug] [2017-11-28T00:06:07.359Z] CLI Version:   3.15.3
+[debug] [2017-11-28T00:06:07.359Z] Platform:      win32
+[debug] [2017-11-28T00:06:07.359Z] Node Version:  v6.11.4
+[debug] [2017-11-28T00:06:07.360Z] Time:          Mon Nov 27 2017 16:06:07 GMT-0800 (Pacific Standard Time)
+[debug] [2017-11-28T00:06:07.360Z] ----------------------------------------------------------------------
+[debug] 
+[info] 
+[info] Visit this URL on any device to log in:
+[info] https://accounts.google.com/o/oauth2/auth?client_id=563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com&scope=email%20openid%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloudplatformprojects.readonly%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Ffirebase%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform&response_type=code&state=578172176&redirect_uri=http%3A%2F%2Flocalhost%3A9005
+[info] 
+[info] Waiting for authentication...
+[debug] [2017-11-28T00:06:15.253Z] >>> HTTP REQUEST POST https://accounts.google.com/o/oauth2/token { code: '4/biz5HtA4NHj_zzB3GI_VEAQMOWQoz_tgNwVPALSf65k',
+  client_id: '563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com',
+  client_secret: 'j9iVZfS8kkCEFUPaAeJV0sAi',
+  redirect_uri: 'http://localhost:9005',
+  grant_type: 'authorization_code' } 
+ Mon Nov 27 2017 16:06:15 GMT-0800 (Pacific Standard Time)
+[debug] [2017-11-28T00:06:36.440Z] Token Fetch Error: Error
+    at Error.FirebaseError (C:\Users\jz5822\AppData\Roaming\npm\node_modules\firebase-tools\lib\error.js:11:17)
+    at Request._callback (C:\Users\jz5822\AppData\Roaming\npm\node_modules\firebase-tools\lib\api.js:32:23)
+    at self.callback (C:\Users\jz5822\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\request\request.js:186:22)
+    at emitOne (events.js:96:13)
+    at Request.emit (events.js:188:7)
+    at Request.onRequestError (C:\Users\jz5822\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\request\request.js:878:8)
+    at emitOne (events.js:96:13)
+    at ClientRequest.emit (events.js:188:7)
+    at TLSSocket.socketErrorListener (_http_client.js:310:9)
+    at emitOne (events.js:96:13)
+[debug] [2017-11-28T00:06:51.914Z] ----------------------------------------------------------------------
+[debug] [2017-11-28T00:06:51.916Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\jz5822\AppData\Roaming\npm\node_modules\firebase-tools\bin\firebase login
+[debug] [2017-11-28T00:06:51.917Z] CLI Version:   3.15.3
+[debug] [2017-11-28T00:06:51.917Z] Platform:      win32
+[debug] [2017-11-28T00:06:51.917Z] Node Version:  v6.11.4
+[debug] [2017-11-28T00:06:51.918Z] Time:          Mon Nov 27 2017 16:06:51 GMT-0800 (Pacific Standard Time)
+[debug] [2017-11-28T00:06:51.918Z] ----------------------------------------------------------------------
+[debug] 
+[info] 
+[info] Visit this URL on any device to log in:
+[info] https://accounts.google.com/o/oauth2/auth?client_id=563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com&scope=email%20openid%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloudplatformprojects.readonly%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Ffirebase%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform&response_type=code&state=384378365&redirect_uri=http%3A%2F%2Flocalhost%3A9005
+[info] 
+[info] Waiting for authentication...
+[debug] [2017-11-28T00:06:59.735Z] >>> HTTP REQUEST POST https://accounts.google.com/o/oauth2/token { code: '4/JhE7vjGunjV69Jslx1UG3WMqn2SYypUu5PhRxx5sKuc',
+  client_id: '563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com',
+  client_secret: 'j9iVZfS8kkCEFUPaAeJV0sAi',
+  redirect_uri: 'http://localhost:9005',
+  grant_type: 'authorization_code' } 
+ Mon Nov 27 2017 16:06:59 GMT-0800 (Pacific Standard Time)
+[debug] [2017-11-28T00:07:20.796Z] Token Fetch Error: Error
+    at Error.FirebaseError (C:\Users\jz5822\AppData\Roaming\npm\node_modules\firebase-tools\lib\error.js:11:17)
+    at Request._callback (C:\Users\jz5822\AppData\Roaming\npm\node_modules\firebase-tools\lib\api.js:32:23)
+    at self.callback (C:\Users\jz5822\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\request\request.js:186:22)
+    at emitOne (events.js:96:13)
+    at Request.emit (events.js:188:7)
+    at Request.onRequestError (C:\Users\jz5822\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\request\request.js:878:8)
+    at emitOne (events.js:96:13)
+    at ClientRequest.emit (events.js:188:7)
+    at TLSSocket.socketErrorListener (_http_client.js:310:9)
+    at emitOne (events.js:96:13)

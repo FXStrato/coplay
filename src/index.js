@@ -7,13 +7,16 @@ import {BrowserRouter as Router} from 'react-router-dom';
 import App from './App';
 import registerServiceWorker from './registerServiceWorker';
 
+
+<script src="https://www.gstatic.com/firebasejs/4.6.2/firebase.js"></script>
+
 // Initialize Firebase
   var config = {
     apiKey: "AIzaSyAHnWjTONd9gXGE3NojGif5LfHM289dMv4",
     authDomain: "coplay-840e6.firebaseapp.com",
     databaseURL: "https://coplay-840e6.firebaseio.com",
     projectId: "coplay-840e6",
-    storageBucket: "",
+    storageBucket: "coplay-840e6.appspot.com",
     messagingSenderId: "602861674443"
   };
   firebase.initializeApp(config);

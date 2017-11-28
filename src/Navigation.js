@@ -1,9 +1,35 @@
 import React, { Component } from 'react';
 import {Link} from 'react-router-dom';
+import firebase from 'firebase';
+import randomize from 'randomatic';
 
 class Navigation extends Component {
 
+  state = {
+    ownRoom: null,
+    uid: null
+  }
+
   componentWillMount = () => {
+    firebase.auth().onAuthStateChanged((user) => {
+      if (user) {
+        // User is signed in.
+        firebase.database().ref('associations/' + user.uid).once('value').then((snapshot) => {
+          if(snapshot.val()) {
+            //Check if they have a room; if they don't, display create and create if they click; otherwise, link to their room
+            this.setState({ownRoom: snapshot.val().ownRoom});
+          } else {
+            this.setState({ownRoom: false});
+          }
+          this.setState({uid: user.uid});
+        });
+        // ...
+      } else {
+        // User is signed out.
+        // ...
+      }
+      // ...
+    });
     document.addEventListener('DOMContentLoaded', function () {
 
       // Get all "navbar-burger" elements
@@ -30,6 +56,24 @@ class Navigation extends Component {
     });
   }
 
+  createRoom = () => {
+    //If creating room, check if public or private. If private, dont add it under room list
+
+    let roomName = randomize('Aa0', 16);
+    if(!this.state.ownRoom) {
+      firebase.database().ref('associations/' + this.state.uid).set({
+        ownRoom: roomName
+      }).then((response) => {
+        firebase.database().ref('room/' + roomName).set({
+          isPublic: false
+        });
+        this.props.history.push('room/' + roomName);
+      });
+    } else {
+      this.props.history.push('room/' + this.state.ownRoom);
+    }
+  }
+
   render() {
     return (
       <nav className="navbar is-dark is-fixed-top">
@@ -45,14 +89,17 @@ class Navigation extends Component {
         <div className="navbar-start">
           <Link to="/" className="navbar-item">Home</Link>
           <Link to="/about" className="navbar-item">About</Link>
+          {this.state.ownRoom !== null ?
+            this.state.ownRoom ?
+            <Link to={'/room/' + this.state.ownRoom} className="navbar-item">My Room</Link>
+            :
+            <div className="navbar-item" onClick={this.createRoom}>Create Room</div>
+            :
+            null
+          }
           <Link to="/list" className="navbar-item">Room List</Link>
         </div>
         <div className="navbar-end">
-          <div className="navbar-item">
-            <div className="field is-grouped">
-
-            </div>
-          </div>
         </div>
       </div>
     </nav>

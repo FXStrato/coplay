@@ -10,6 +10,8 @@ class Room extends Component {
     room: this.props.match.params.roomID,
     uid: null,
     isAdmin: false,
+    isOwner: false,
+    isPublic: null,
     open: false,
     playing: false,
     initPlaying: false,
@@ -24,6 +26,8 @@ class Room extends Component {
     searchinput: "",
     searchloading: false,
     selectloadingindex: -1,
+    deleteModal: false,
+    publicModal: false,
   }
 
   componentWillMount = () => {
@@ -31,10 +35,21 @@ class Room extends Component {
       if (user) {
         // User is signed in.
         this.setState({uid: user.uid});
+        firebase.database().ref('room/' + this.state.room).once('value').then((snapshot) => {
+          if(snapshot.val()) {
+            this.setState({isPublic: snapshot.val().isPublic});
+          }
+        });
         firebase.database().ref('associations/' + user.uid).once('value').then((snapshot) => {
           if(snapshot.val()) {
             let isAdmin = false;
-            if(snapshot.val().ownRoom === this.state.room) isAdmin = true;
+            if(snapshot.val().ownRoom === this.state.room) {
+              this.setState({isOwner: true});
+              isAdmin = true;
+            }
+            if(snapshot.val().rooms) {
+              if(snapshot.val().rooms[this.state.room]) isAdmin = true;
+            }
             this.setState({isAdmin: isAdmin});
           }
         });
@@ -49,6 +64,7 @@ class Room extends Component {
 
   componentDidMount = () => {
     document.getElementById("default-tab").click();
+    this.roomRef = firebase.database().ref('room/' + this.state.room);
     this.queueRef = firebase.database().ref('room/' + this.state.room + '/queue');
     this.historyRef = firebase.database().ref('room/' + this.state.room + '/history');
     this.nowPlayingRef = firebase.database().ref('room/' + this.state.room + '/nowplaying');
@@ -89,6 +105,12 @@ class Room extends Component {
     this.historyRef.on('value', (snapshot) => {
       this.getHistoryList(snapshot.val());
     })
+
+    this.roomRef.on('value', (snapshot) => {
+      if(!snapshot.val()) {
+        this.props.history.push('/');
+      }
+    })
   }
 
   componentWillUnmount = () => {
@@ -104,6 +126,8 @@ class Room extends Component {
     }
     this.nowPlayingRef.off();
     this.queueRef.off();
+    this.historyRef.off();
+    this.roomRef.off();
   }
 
   ref = player => {
@@ -317,6 +341,38 @@ class Room extends Component {
     }
   }
 
+  handleRoomDelete = () => {
+    //remove association bits too
+    firebase.database().ref('associations/' + this.state.uid + '/ownRoom').remove();
+    firebase.database().ref('list/' + this.state.room).remove();
+    //remove from public list
+    firebase.database().ref('room/' + this.state.room).remove();
+    this.props.history.push('/');
+  }
+
+  handlePublic = () => {
+    if(!this.state.isPublic) {
+      //add to public list
+      firebase.database().ref('room/' + this.state.room).set({
+        isPublic: true
+      }).then(() => {
+        firebase.database().ref('list/' + this.state.room).update({
+          isPublic: true
+        });
+      });
+      this.setState({isPublic: true});
+    } else {
+      //remove from public list
+      firebase.database().ref('room/' + this.state.room).set({
+        isPublic: false
+      }).then(() => {
+        firebase.database().ref('list/' + this.state.room).remove();
+      });
+      this.setState({isPublic: false});
+    }
+    this.setState({publicModal: false});
+  }
+
   //Formate the results to display nicely within a table
   formatSearchList = (data) => {
     let results = _.map(data, (el, index) => {
@@ -416,18 +472,47 @@ class Room extends Component {
                 <div className="level-left"></div>
                 <div className="level-right">
                   <div className="level-item">
+                    {this.state.isPublic !== null ?
+                      <button className={this.state.isPublic ? "button is-dark" : "button is-info"} onClick={() => this.setState({publicModal: true})}>{this.state.isPublic ? 'Go Private' : 'Go Public'}</button>
+                    :
+                    null
+                    }
+                  </div>
+                  <div className="level-item">
+                    <a className="delete is-large" onClick={() => this.setState({deleteModal: true})}></a>
+                  </div>
+                </div>
+              </nav>
+            </div>
+          </div>
+          <div className="columns">
+            <div className="column">
+              <nav className="level">
+                <div className="level-left"></div>
+                <div className="level-right">
+                  <div className="level-item">
                     <div className="field is-grouped is-grouped-multiline">
+                      {this.state.uid &&
                       <div className="control">
                         <div className="tags has-addons">
-                          <span className="tag is-dark">npm</span>
-                          <span className="tag is-info">0.5.0</span>
+                          <span className="tag is-dark">status</span>
+                          <span className="tag is-primary">validated</span>
                         </div>
                       </div>
+                      }
+                      {this.state.isPublic !== null &&
+                      <div className="control">
+                        <div className="tags has-addons">
+                          <span className="tag is-dark">visibility</span>
+                          <span className="tag is-light">{this.state.isPublic ? 'public' : 'private'}</span>
+                        </div>
+                      </div>
+                      }
                         {this.state.isAdmin &&
                         <div className="control">
                           <div className="tags has-addons">
-                            <span className="tag is-dark">Level</span>
-                            <span className="tag is-info">Admin</span>
+                            <span className="tag is-dark">level</span>
+                            <span className="tag is-info">{this.state.isOwner ? 'owner' : 'admin'}</span>
                           </div>
                         </div>
                         }
@@ -583,6 +668,56 @@ class Room extends Component {
               </div>
             </div>
           </div>
+        </div>
+        <div className={this.state.deleteModal ? 'modal is-active' : 'modal'}>
+          <div className="modal-background" onClick={() => this.setState({deleteModal: false})}></div>
+          <div className="modal-content">
+            <article className="message">
+              <div className="message-header">
+                <p>Confirm Room Deletion</p>
+              </div>
+              <div className="message-body">
+                Are you sure you want to completely erase your room? You can always create a new one, but your queue and history will be lost.
+                <nav className="level">
+                  <div className="level-left"></div>
+                  <div className="level-right">
+                    <div className="level-item">
+                      <button className="button is-danger" style={{marginRight: 15}} onClick={this.handleRoomDelete}>Confirm</button>
+                      <button className="button is-light" onClick={() => this.setState({deleteModal: false})}>Cancel</button>
+                    </div>
+                  </div>
+                </nav>
+              </div>
+            </article>
+          </div>
+          <button className="modal-close is-large" aria-label="close"></button>
+        </div>
+        <div className={this.state.publicModal ? 'modal is-active' : 'modal'}>
+          <div className="modal-background" onClick={() => this.setState({publicModal: false})}></div>
+          <div className="modal-content">
+            <article className="message">
+              <div className="message-header">
+                <p>Set Room Visibility</p>
+              </div>
+              <div className="message-body">
+                {this.state.isPublic === false ?
+                <p>Going public will allow anyone to join your room and add to your playlist. Would you like to go public?</p>
+                :
+                <p>Going private will remove you from the public room list. Would you like to go private?</p>
+                }
+                <nav className="level">
+                  <div className="level-left"></div>
+                  <div className="level-right">
+                    <div className="level-item">
+                      <button className="button is-danger" style={{marginRight: 15}} onClick={this.handlePublic}>Confirm</button>
+                      <button className="button is-light" onClick={() => this.setState({publicModal: false})}>Cancel</button>
+                    </div>
+                  </div>
+                </nav>
+              </div>
+            </article>
+          </div>
+          <button className="modal-close is-large" aria-label="close"></button>
         </div>
       </section>
     );

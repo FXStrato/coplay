@@ -4,7 +4,7 @@ import firebase from 'firebase';
 class RoomList extends Component {
 
   componentWillMount = () => {
-    firebase.database().ref('/room/').once('value').then(function(snapshot) {
+    firebase.database().ref('/list').once('value').then(function(snapshot) {
       console.log(snapshot.val());
     });
   }
