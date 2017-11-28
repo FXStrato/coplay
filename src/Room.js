@@ -468,6 +468,7 @@ class Room extends Component {
         <div className="container">
           <div className="columns">
             <div className="column">
+              {this.state.isOwner &&
               <nav className="level">
                 <div className="level-left"></div>
                 <div className="level-right">
@@ -483,6 +484,7 @@ class Room extends Component {
                   </div>
                 </div>
               </nav>
+              }
             </div>
           </div>
           <div className="columns">

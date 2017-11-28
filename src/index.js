@@ -7,9 +7,6 @@ import {BrowserRouter as Router} from 'react-router-dom';
 import App from './App';
 import registerServiceWorker from './registerServiceWorker';
 
-
-<script src="https://www.gstatic.com/firebasejs/4.6.2/firebase.js"></script>
-
 // Initialize Firebase
   var config = {
     apiKey: "AIzaSyAHnWjTONd9gXGE3NojGif5LfHM289dMv4",
