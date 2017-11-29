@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import firebase from 'firebase';
 import './common.css';
 import './bulma.css';
+import '../node_modules/rc-slider/assets/index.css';
 import {BrowserRouter as Router} from 'react-router-dom';
 import App from './App';
 import registerServiceWorker from './registerServiceWorker';

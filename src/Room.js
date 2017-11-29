@@ -3,6 +3,7 @@ import _ from 'lodash';
 import moment from 'moment';
 import firebase from 'firebase';
 import ReactPlayer from 'react-player';
+import Slider from 'rc-slider';
 
 class Room extends Component {
 
@@ -13,10 +14,13 @@ class Room extends Component {
     isOwner: false,
     isPublic: null,
     open: false,
+    volume: 1,
+    playerReady: false,
     playing: false,
     initPlaying: false,
     url: "",
     nowPlaying: null,
+    timeresults: [],
     results: [],
     formattedResults: [],
     formattedQueue: [],
@@ -195,6 +199,7 @@ class Room extends Component {
                 let seconds = moment.duration(data.items[i].contentDetails.duration).seconds() < 10 ? "0" + moment.duration(data.items[i].contentDetails.duration).seconds() : moment.duration(data.items[i].contentDetails.duration).seconds();
                 temp[i].duration = hours + minutes + seconds;
               }
+              this.setState({timeresults: temp});
               this.formatSearchList(temp);
             })
           })
@@ -271,7 +276,8 @@ class Room extends Component {
   }
 
   //Add to queue; if nowplaying is empty, add whatever was queued to nowplaying
-  handleSelect = (id, title, duration, thumbnail) => {
+  handleSelect = (id, title, duration, thumbnail, index) => {
+    this.setState({selectloadingindex: index});
     firebase.database().ref('room/' + this.state.room + '/queue/').push({
       id: id,
       title: title,
@@ -279,8 +285,13 @@ class Room extends Component {
       thumbnail: thumbnail,
       playedSeconds: 0,
     }).then(() => {
-      console.log('Successfully added song to queue');
+      //This bit forces the search results to show loading on the clicked item, and then reset it back to being able to be added
+      this.formatSearchList(this.state.timeresults);
       this.setState({selectloadingindex: -1});
+      setTimeout(() => {
+        this.formatSearchList(this.state.timeresults);
+      }, 600)
+
       firebase.database().ref('room/' + this.state.room + '/nowplaying').once('value').then((snapshot) => {
         if(!snapshot.val()) {
           this.handleSongEnd();
@@ -295,6 +306,10 @@ class Room extends Component {
       //If it's not null, it means it's being updated; so don't do anything with it just yet
       console.log(nowPlaying);
     }
+  }
+
+  handleVolume = (value) => {
+    this.setState({volume: value});
   }
 
   //Remove whatever is in now playing, replace with first thing from queue, remove from queue, add to history, and
@@ -388,7 +403,7 @@ class Room extends Component {
                 {el.duration}
               </div>
               <div className="column has-text-centered">
-                <a className={this.state.selectloadingindex === index ? "button is-uppercase is-loading is-disabled" : "button is-uppercase"} onClick={() => this.handleSelect(el.id.videoId, el.snippet.title, el.duration, el.snippet.thumbnails.default.url)}>Add To Queue</a>
+                <a className={this.state.selectloadingindex === index ? "button is-uppercase is-loading is-disabled" : "button is-uppercase"} onClick={() => this.handleSelect(el.id.videoId, el.snippet.title, el.duration, el.snippet.thumbnails.default.url, index)}>Add To Queue</a>
               </div>
             </div>
           </td>
@@ -399,7 +414,7 @@ class Room extends Component {
   }
 
   getQueueList = (data) => {
-    let results = _.map(data, (el, index) => {
+    let results = _.map(data, (el, index, name) => {
       return (
         <tr key={'queue-' + el.id + '-' + index}>
           <td>
@@ -418,7 +433,7 @@ class Room extends Component {
               <div className="level-right">
                 {this.state.isAdmin &&
                 <div className="level-item">
-                  <a className="button" onClick={() => this.handleDelete('q', el.id)}><i className="fa fa-trash"></i></a>
+                  <a className="button" onClick={() => this.handleDelete('q', Object.keys(name)[0])}><i className="fa fa-trash"></i></a>
                 </div>
                 }
               </div>
@@ -474,7 +489,7 @@ class Room extends Component {
                 <div className="level-right">
                   <div className="level-item">
                     {this.state.isPublic !== null ?
-                      <button className={this.state.isPublic ? "button is-dark" : "button is-info"} onClick={() => this.setState({publicModal: true})}>{this.state.isPublic ? 'Go Private' : 'Go Public'}</button>
+                      <button className={this.state.isPublic ? "button is-dark" : "button is-primary"} onClick={() => this.setState({publicModal: true})}>{this.state.isPublic ? 'Go Private' : 'Go Public'}</button>
                     :
                     null
                     }
@@ -498,7 +513,7 @@ class Room extends Component {
                       <div className="control">
                         <div className="tags has-addons">
                           <span className="tag is-dark">status</span>
-                          <span className="tag is-primary">validated</span>
+                          <span className="tag is-success">validated</span>
                         </div>
                       </div>
                       }
@@ -530,7 +545,7 @@ class Room extends Component {
               <div className="tabs">
                 <ul>
                   <li id="default-tab" className="tab-links" onClick={(e) => this.openTab(e, 'np')}><a>Now Playing</a></li>
-                  <li className="tab-links" onClick={(e) => this.openTab(e, 'q')}><a>Queue</a></li>
+                  <li className="tab-links" onClick={(e) => this.openTab(e, 'q')}><a>Queue {this.state.formattedQueue.length > 0 && <span style={{marginLeft: 5}} className="tag is-light">{this.state.formattedQueue.length}</span>}</a></li>
                   <li className="tab-links" onClick={(e) => this.openTab(e, 'h')}><a>History</a></li>
                 </ul>
               </div>
@@ -547,7 +562,21 @@ class Room extends Component {
                       {this.state.nowPlaying.duration}
                     </div>
                   </div>
-                  <div className="level-right">
+                    <div className="level-right">
+                    {this.state.playerReady &&
+                    <div className="level-item" style={{height: 50}}>
+                      <Slider
+                        handleStyle={{borderColor: 'red'}}
+                        trackStyle={{backgroundColor: 'red'}}
+                        vertical
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={this.state.volume}
+                        onChange={this.handleVolume}
+                      />
+                    </div>
+                    }
                     {this.state.isAdmin &&
                     <div className="level-item">
                       <div className="content has-text-centered">
@@ -560,7 +589,7 @@ class Room extends Component {
                   </div>
                 </nav>
                 }
-                <ReactPlayer ref={this.ref} style={this.state.isAdmin ? {pointerEvents: 'auto'} : {pointerEvents: 'none'}} width="100%" url={this.state.url} playing={this.state.playing} progressFrequency={500} onProgress={this.handleProgress} controls={this.state.isAdmin} onPlay={() => this.handlePlay(true)} onPause={() => this.handlePlay(false)} onEnded={this.handleSongEnd} />
+                <ReactPlayer ref={this.ref} style={this.state.isAdmin ? {pointerEvents: 'auto'} : {pointerEvents: 'none'}} width="100%" url={this.state.url} playing={this.state.playing} volume={this.state.volume} onReady={() => this.setState({playerReady: true})} progressFrequency={500} onProgress={this.handleProgress} controls={this.state.isAdmin} onPlay={() => this.handlePlay(true)} onPause={() => this.handlePlay(false)} onEnded={this.handleSongEnd} />
               </div>
               <div className="column">
                 <form onSubmit={this.handleSearch}>
@@ -569,7 +598,7 @@ class Room extends Component {
                       <input onChange={this.handleChange} className="input" type="text" placeholder="Search Youtube"/>
                     </div>
                     <div className="control">
-                      <button type="submit" disabled={this.state.searchloading ? true : false} className={this.state.searchloading ? "button is-primary is-loading" : "button is-primary"} onClick={this.handleSearch}>Search</button>
+                      <button type="submit" disabled={this.state.searchloading ? true : false} className={this.state.searchloading ? "button is-link is-loading" : "button is-link"} onClick={this.handleSearch}>Search</button>
                     </div>
                   </div>
                 </form>

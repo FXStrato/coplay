@@ -9,6 +9,7 @@
     "moment": "^2.19.2",
     "prop-types": "^15.6.0",
     "randomatic": "^2.0.0",
+    "rc-slider": "^8.4.1",
     "react": "^16.1.1",
     "react-dom": "^16.1.1",
     "react-player": "^0.25.3",
