@@ -277,6 +277,7 @@ class Room extends Component {
 
   //Add to queue; if nowplaying is empty, add whatever was queued to nowplaying
   handleSelect = (id, title, duration, thumbnail, index) => {
+    //TODO: Show notification telling what song got added, and then hide it again using a timeout
     this.setState({selectloadingindex: index});
     firebase.database().ref('room/' + this.state.room + '/queue/').push({
       id: id,
@@ -589,7 +590,7 @@ class Room extends Component {
                   </div>
                 </nav>
                 }
-                <ReactPlayer ref={this.ref} style={this.state.isAdmin ? {pointerEvents: 'auto'} : {pointerEvents: 'none'}} width="100%" url={this.state.url} preload={true} playing={this.state.playing} volume={this.state.volume} onReady={() => this.setState({playerReady: true})} progressFrequency={500} onProgress={this.handleProgress} onPlay={() => this.handlePlay(true)} onPause={() => this.handlePlay(false)} onEnded={this.handleSongEnd} />
+                <ReactPlayer ref={this.ref} style={this.state.isAdmin ? {pointerEvents: 'auto'} : {pointerEvents: 'none'}} width="100%" url={this.state.url} preload={true} controls={this.state.isAdmin} playing={this.state.playing} volume={this.state.volume} onReady={() => this.setState({playerReady: true})} progressFrequency={500} onProgress={this.handleProgress} onPlay={() => this.handlePlay(true)} onPause={() => this.handlePlay(false)} onEnded={this.handleSongEnd} />
               </div>
               <div className="column">
                 <form onSubmit={this.handleSearch}>
