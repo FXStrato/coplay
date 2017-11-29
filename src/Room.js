@@ -14,7 +14,7 @@ class Room extends Component {
     isOwner: false,
     isPublic: null,
     open: false,
-    volume: 1,
+    volume: 0.5,
     playerReady: false,
     playing: false,
     initPlaying: false,
@@ -118,7 +118,7 @@ class Room extends Component {
   }
 
   componentWillUnmount = () => {
-    if(this.state.isAdmin && this.state.nowPlaying) {
+    if(this.state.isOwner && this.state.nowPlaying) {
       firebase.database().ref('room/' + this.state.room + '/nowplaying').update({
         id: this.state.nowPlaying.id,
         title: this.state.nowPlaying.title,
