@@ -76,7 +76,7 @@ class Room extends Component {
       if(!snapshot.val()) {
         this.handleSongEnd();
       } else {
-        if(this.state.isAdmin && snapshot.val().playing) {
+        if(this.state.isOwner && snapshot.val().playing) {
           //Set it to false, since it got loaded and admin should control when it begins and stops
           firebase.database().ref('room/' + this.state.room + '/nowplaying').update({
             id: snapshot.val().id,
@@ -589,7 +589,7 @@ class Room extends Component {
                   </div>
                 </nav>
                 }
-                <ReactPlayer ref={this.ref} style={this.state.isAdmin ? {pointerEvents: 'auto'} : {pointerEvents: 'none'}} width="100%" url={this.state.url} playing={this.state.playing} volume={this.state.volume} onReady={() => this.setState({playerReady: true})} progressFrequency={500} onProgress={this.handleProgress} controls={this.state.isAdmin} onPlay={() => this.handlePlay(true)} onPause={() => this.handlePlay(false)} onEnded={this.handleSongEnd} />
+                <ReactPlayer ref={this.ref} style={this.state.isAdmin ? {pointerEvents: 'auto'} : {pointerEvents: 'none'}} width="100%" url={this.state.url} preload={true} playing={this.state.playing} volume={this.state.volume} onReady={() => this.setState({playerReady: true})} progressFrequency={500} onProgress={this.handleProgress} onPlay={() => this.handlePlay(true)} onPause={() => this.handlePlay(false)} onEnded={this.handleSongEnd} />
               </div>
               <div className="column">
                 <form onSubmit={this.handleSearch}>
