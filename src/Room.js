@@ -351,7 +351,7 @@ class Room extends Component {
           })
         } else {
           //if nothing in queue, display helper text to add stuff to queue to play songs
-          this.setState({url: "", nowPlaying: null, nowPlayingKey: null});
+          this.setState({url: null, nowPlaying: null, nowPlayingKey: null});
         }
       });
     }
@@ -387,6 +387,10 @@ class Room extends Component {
       this.setState({isPublic: false});
     }
     this.setState({publicModal: false});
+  }
+
+  handlePlayerError = error => {
+    console.log(error);
   }
 
   //Formate the results to display nicely within a table
@@ -590,7 +594,7 @@ class Room extends Component {
                   </div>
                 </nav>
                 }
-                <ReactPlayer ref={this.ref} style={this.state.isAdmin ? {pointerEvents: 'auto'} : {pointerEvents: 'none'}} width="100%" url={this.state.url} preload={true} controls={this.state.isAdmin} playing={this.state.playing} volume={this.state.volume} onReady={() => this.setState({playerReady: true})} progressFrequency={500} onProgress={this.handleProgress} onPlay={() => this.handlePlay(true)} onPause={() => this.handlePlay(false)} onEnded={this.handleSongEnd} />
+                <ReactPlayer ref={this.ref} style={this.state.isAdmin ? {pointerEvents: 'auto'} : {pointerEvents: 'none'}} width="100%" url={this.state.url} config={{youtube:{preload: true}}} controls={this.state.isAdmin} playing={this.state.playing} volume={this.state.volume} onReady={() => this.setState({playerReady: true})} progressFrequency={500} onProgress={this.handleProgress} onPlay={() => this.handlePlay(true)} onPause={() => this.handlePlay(false)} onEnded={this.handleSongEnd} onError={this.handlePlayerError} />
               </div>
               <div className="column">
                 <form onSubmit={this.handleSearch}>
