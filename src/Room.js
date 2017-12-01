@@ -317,6 +317,7 @@ class Room extends Component {
   //then begin song
   handleSongEnd = () => {
     if(this.state.isAdmin) {
+      this.setState({playing: false});
       firebase.database().ref('room/' + this.state.room + '/nowplaying').remove();
       //Acquire first thing from queue
       let queueItem;
@@ -347,11 +348,11 @@ class Room extends Component {
             });
             //Create url for ReactPlayer
             let temp = "https://www.youtube.com/v/" + queueItem.id + "?playlist=" + queueItem.id + "&autoplay=1&rel=0";
-            this.setState({url: temp, nowPlaying: queueItem, nowPlayingKey: queueID});
+            this.setState({url: temp, nowPlaying: queueItem, nowPlayingKey: queueID, playing: true});
           })
         } else {
           //if nothing in queue, display helper text to add stuff to queue to play songs
-          this.setState({url: null, nowPlaying: null, nowPlayingKey: null});
+          this.setState({url: null, nowPlaying: null, nowPlayingKey: null, playing: false});
         }
       });
     }
