@@ -171,6 +171,11 @@ class Room extends Component {
    }
   }
 
+  onReady = () => {
+    this.setState({playerReady: true});
+    if(this.state.nowPlaying.playing) this.handlePlay(true);
+  }
+
   //Save input value to state
   handleChange = (event) => {
     this.setState({searchinput: event.target.value})
@@ -301,14 +306,6 @@ class Room extends Component {
     });
   }
 
-  handleNowPlaying = (nowPlaying) => {
-    if(!nowPlaying) console.log('nowPlaying is null');
-    else {
-      //If it's not null, it means it's being updated; so don't do anything with it just yet
-      console.log(nowPlaying);
-    }
-  }
-
   handleVolume = (value) => {
     this.setState({volume: value});
   }
@@ -317,7 +314,7 @@ class Room extends Component {
   //then begin song
   handleSongEnd = () => {
     if(this.state.isAdmin) {
-      this.setState({playing: false});
+      this.setState({playing: false, playerReady: false});
       firebase.database().ref('room/' + this.state.room + '/nowplaying').remove();
       //Acquire first thing from queue
       let queueItem;
@@ -348,7 +345,7 @@ class Room extends Component {
             });
             //Create url for ReactPlayer
             let temp = "https://www.youtube.com/v/" + queueItem.id + "?playlist=" + queueItem.id + "&autoplay=1&rel=0";
-            this.setState({url: temp, nowPlaying: queueItem, nowPlayingKey: queueID, playing: true});
+            this.setState({url: temp, nowPlaying: queueItem, nowPlayingKey: queueID});
           })
         } else {
           //if nothing in queue, display helper text to add stuff to queue to play songs
@@ -421,6 +418,7 @@ class Room extends Component {
 
   getQueueList = (data) => {
     let results = _.map(data, (el, index, name) => {
+      console.log(name);
       return (
         <tr key={'queue-' + el.id + '-' + index}>
           <td>
@@ -595,7 +593,7 @@ class Room extends Component {
                   </div>
                 </nav>
                 }
-                <ReactPlayer ref={this.ref} style={this.state.isAdmin ? {pointerEvents: 'auto'} : {pointerEvents: 'none'}} width="100%" url={this.state.url} config={{youtube:{preload: true}}} controls={this.state.isAdmin} playing={this.state.playing} volume={this.state.volume} onReady={() => this.setState({playerReady: true})} progressFrequency={500} onProgress={this.handleProgress} onPlay={() => this.handlePlay(true)} onPause={() => this.handlePlay(false)} onEnded={this.handleSongEnd} onError={this.handlePlayerError} />
+                <ReactPlayer ref={this.ref} style={this.state.isAdmin ? {pointerEvents: 'auto'} : {pointerEvents: 'none'}} width="100%" url={this.state.url} config={{youtube:{preload: true}}} controls={this.state.isAdmin} playing={this.state.playing} volume={this.state.volume} onReady={this.setReady} progressFrequency={500} onProgress={this.handleProgress} onPlay={() => this.handlePlay(true)} onPause={() => this.handlePlay(false)} onEnded={this.handleSongEnd} onError={this.handlePlayerError} />
               </div>
               <div className="column">
                 <form onSubmit={this.handleSearch}>
