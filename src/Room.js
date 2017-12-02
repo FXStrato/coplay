@@ -245,7 +245,7 @@ class Room extends Component {
           duration : this.state.nowPlaying.duration,
           thumbnail: this.state.nowPlaying.thumbnail,
           playedSeconds: data.playedSeconds,
-          playing: true,
+          playing: this.state.nowPlaying.playing,
         }
         let updates = {};
         updates['room/' + this.state.room + '/nowplaying/'] = nowPlaying;
@@ -282,7 +282,6 @@ class Room extends Component {
 
   //Add to queue; if nowplaying is empty, add whatever was queued to nowplaying
   handleSelect = (id, title, duration, thumbnail, index) => {
-    //TODO: Show notification telling what song got added, and then hide it again using a timeout
     this.setState({selectloadingindex: index});
     firebase.database().ref('room/' + this.state.room + '/queue/').push({
       id: id,
@@ -293,10 +292,14 @@ class Room extends Component {
     }).then(() => {
       //This bit forces the search results to show loading on the clicked item, and then reset it back to being able to be added
       this.formatSearchList(this.state.timeresults);
-      this.setState({selectloadingindex: -1});
+      this.setState({selectloadingindex: -1, showNotification: true, notificationText: title});
       setTimeout(() => {
         this.formatSearchList(this.state.timeresults);
-      }, 600)
+      }, 1500)
+
+      setTimeout(() => {
+        this.setState({showNotification: false, notificationText: null});
+      }, 2000)
 
       firebase.database().ref('room/' + this.state.room + '/nowplaying').once('value').then((snapshot) => {
         if(!snapshot.val()) {
@@ -310,11 +313,15 @@ class Room extends Component {
     this.setState({volume: value});
   }
 
+  handleBuffer = () => {
+    console.log('Buffering');
+  }
+
   //Remove whatever is in now playing, replace with first thing from queue, remove from queue, add to history, and
   //then begin song
   handleSongEnd = () => {
     if(this.state.isAdmin) {
-      this.setState({playing: false, playerReady: false});
+      this.setState({playing: false});
       firebase.database().ref('room/' + this.state.room + '/nowplaying').remove();
       //Acquire first thing from queue
       let queueItem;
@@ -324,7 +331,7 @@ class Room extends Component {
           //Make sure there's something in the queue
           queueItem = snapshot.val()[Object.keys(snapshot.val())[0]];
           queueID = Object.keys(snapshot.val())[0];
-          queueItem.isPlaying = true;
+          queueItem.playing = true;
           firebase.database().ref('room/' + this.state.room + '/nowplaying').update({
             id: queueItem.id,
             title: queueItem.title,
@@ -334,7 +341,7 @@ class Room extends Component {
             playing: true,
           }).then(() => {
             //Now remove song from queue
-            console.log('Successfully added first song in queue to now playing');
+            //console.log('Successfully added first song in queue to now playing');
             firebase.database().ref('room/' + this.state.room + '/queue/' + queueID).remove();
             //Add song to history
             firebase.database().ref('room/' + this.state.room + '/history/').push({
@@ -388,6 +395,7 @@ class Room extends Component {
   }
 
   handlePlayerError = error => {
+    console.log('Player has errored');
     console.log(error);
   }
 
@@ -406,7 +414,12 @@ class Room extends Component {
                 {el.duration}
               </div>
               <div className="column has-text-centered">
-                <a className={this.state.selectloadingindex === index ? "button is-uppercase is-loading is-disabled" : "button is-uppercase"} onClick={() => this.handleSelect(el.id.videoId, el.snippet.title, el.duration, el.snippet.thumbnails.default.url, index)}>Add To Queue</a>
+                {this.state.selectloadingindex === index ?
+                  <a disabled className="button is-uppercase is-outlined is-success">Added</a>
+                  :
+                  <a className="button is-uppercase" onClick={() => this.handleSelect(el.id.videoId, el.snippet.title, el.duration, el.snippet.thumbnails.default.url, index)}>Add to Queue</a>
+                }
+
               </div>
             </div>
           </td>
@@ -418,7 +431,6 @@ class Room extends Component {
 
   getQueueList = (data) => {
     let results = _.map(data, (el, index, name) => {
-      console.log(name);
       return (
         <tr key={'queue-' + el.id + '-' + index}>
           <td>
@@ -489,7 +501,8 @@ class Room extends Component {
             <div className="column">
               {this.state.isOwner &&
               <nav className="level">
-                <div className="level-left"></div>
+                <div className="level-left">
+                </div>
                 <div className="level-right">
                   <div className="level-item">
                     {this.state.isPublic !== null ?
@@ -593,7 +606,12 @@ class Room extends Component {
                   </div>
                 </nav>
                 }
-                <ReactPlayer ref={this.ref} style={this.state.isAdmin ? {pointerEvents: 'auto'} : {pointerEvents: 'none'}} width="100%" url={this.state.url} config={{youtube:{preload: true}}} controls={this.state.isAdmin} playing={this.state.playing} volume={this.state.volume} onReady={this.setReady} progressFrequency={500} onProgress={this.handleProgress} onPlay={() => this.handlePlay(true)} onPause={() => this.handlePlay(false)} onEnded={this.handleSongEnd} onError={this.handlePlayerError} />
+                {this.state.formattedQueue.length < 1 && !this.state.nowPlaying && this.state.playerReady ?
+                <div className="has-text-centered">No songs currently playing; add some songs!</div>
+                :
+                null
+              }
+                <ReactPlayer ref={this.ref} style={this.state.isAdmin ? {pointerEvents: 'auto'} : {pointerEvents: 'none'}} width="100%" url={this.state.url} config={{youtube:{preload: true}}} controls={this.state.isAdmin} playing={this.state.playing} volume={this.state.volume} onReady={this.onReady} progressFrequency={500} onProgress={this.handleProgress} onPlay={() => this.handlePlay(true)} onPause={() => this.handlePlay(false)} onBuffer={this.handleBuffer} onEnded={this.handleSongEnd} onError={this.handlePlayerError} />
               </div>
               <div className="column">
                 <form onSubmit={this.handleSearch}>
