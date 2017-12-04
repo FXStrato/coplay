@@ -547,9 +547,9 @@ class Room extends Component {
                 <div className="level-left">
                 </div>
                 <div className="level-right">
-                  <div className="level-item">
+                  {/* <div className="level-item">
                     <a className={this.state.allAdmin ? "button is-info" : "button is-warning"} onClick={this.handleAllAdmin}>{this.state.allAdmin ? 'Remove Admin Rights' : 'Give Admin Rights'}</a>
-                  </div>
+                  </div> */}
                   <div className="level-item">
                     {this.state.isPublic !== null ?
                       <button className={this.state.isPublic ? "button is-dark" : "button is-primary"} onClick={() => this.setState({publicModal: true})}>{this.state.isPublic ? 'Go Private' : 'Go Public'}</button>
