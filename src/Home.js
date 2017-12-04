@@ -44,7 +44,8 @@ class Home extends Component {
         ownRoom: roomName
       }).then((response) => {
         firebase.database().ref('room/' + roomName).set({
-          isPublic: false
+          isPublic: false,
+          allAdmin: false,
         });
         this.props.history.push('room/' + roomName);
       });

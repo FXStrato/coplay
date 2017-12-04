@@ -13,6 +13,8 @@ class Room extends Component {
     isAdmin: false,
     isOwner: false,
     isPublic: null,
+    allAdmin: null,
+    viewers: 0,
     open: false,
     volume: 0.5,
     playerReady: false,
@@ -39,21 +41,18 @@ class Room extends Component {
       if (user) {
         // User is signed in.
         this.setState({uid: user.uid});
-        firebase.database().ref('room/' + this.state.room).once('value').then((snapshot) => {
-          if(snapshot.val()) {
-            this.setState({isPublic: snapshot.val().isPublic});
-          }
-        });
         firebase.database().ref('associations/' + user.uid).once('value').then((snapshot) => {
           if(snapshot.val()) {
-            let isAdmin = false;
+            let isAdmin = this.state.isAdmin;
             if(snapshot.val().ownRoom === this.state.room) {
               this.setState({isOwner: true});
               isAdmin = true;
             }
-            if(snapshot.val().rooms) {
-              if(snapshot.val().rooms[this.state.room]) isAdmin = true;
-            }
+            firebase.database().ref('room/' + this.state.room).once('value').then((snapshot) => {
+              if(snapshot.val()) {
+                this.setState({isPublic: snapshot.val().isPublic, isAdmin: isAdmin, allAdmin: snapshot.val().allAdmin});
+              }
+            });
             this.setState({isAdmin: isAdmin});
           }
         });
@@ -67,6 +66,7 @@ class Room extends Component {
   }
 
   componentDidMount = () => {
+    //window.removeEventListener('close', this.handleWindowClose());
     document.getElementById("default-tab").click();
     this.roomRef = firebase.database().ref('room/' + this.state.room);
     this.queueRef = firebase.database().ref('room/' + this.state.room + '/queue');
@@ -87,13 +87,18 @@ class Room extends Component {
             playing: false,
           });
         }
+        let stopPlaying = snapshot.val();
+        stopPlaying.playing = false;
         let temp = "https://www.youtube.com/v/" + snapshot.val().id + "?playlist=" + snapshot.val().id + "&autoplay=1&rel=0";
-        this.setState({url: temp, nowPlaying: snapshot.val()});
+        this.setState({url: temp, nowPlaying: stopPlaying});
       }
     });
     //Set listener on nowPlaying, just check for if it's playing or not (for non admins)
     this.nowPlayingRef.on('value', (snapshot) => {
       if(snapshot.val()) {
+        if(this.state.nowPlaying) {
+          if(snapshot.val().playedSeconds !== this.state.nowPlaying.playedSeconds) this.setState({initPlaying: false});
+        }
         let temp = "https://www.youtube.com/v/" + snapshot.val().id + "?playlist=" + snapshot.val().id + "&autoplay=1&rel=0";
         this.setState({url: temp, playing: snapshot.val().playing, nowPlaying: snapshot.val()})
       } else {
@@ -103,6 +108,11 @@ class Room extends Component {
     })
     //Listener for queue; update it whenever someone adds songs
     this.queueRef.on('value', (snapshot) => {
+      if(snapshot.val()) {
+        if(Object.keys(snapshot.val()).length === 1 && this.state.isOwner && this.state.playerReady && !this.state.nowPlaying) {
+          this.handleSongEnd();
+        }
+      }
       this.getQueueList(snapshot.val());
     })
 
@@ -111,7 +121,14 @@ class Room extends Component {
     })
 
     this.roomRef.on('value', (snapshot) => {
-      if(!snapshot.val()) {
+      if(snapshot.val()) {
+        this.setState({allAdmin: snapshot.val().allAdmin, isPublic: snapshot.val().isPublic});
+        if(!this.state.isOwner) {
+          this.setState({isAdmin: snapshot.val().allAdmin})
+        } else {
+          this.setState({isAdmin: true});
+        }
+      } else {
         this.props.history.push('/');
       }
     })
@@ -237,7 +254,7 @@ class Room extends Component {
 
   //Update firebase with progress of the now playing song
   handleProgress = (data) => {
-    if(this.state.isAdmin) {
+    if(this.state.isOwner) {
       if(this.state.playing) {
         let nowPlaying = {
           id: this.state.nowPlaying.id,
@@ -289,6 +306,7 @@ class Room extends Component {
       duration : duration,
       thumbnail: thumbnail,
       playedSeconds: 0,
+      uid: this.state.uid,
     }).then(() => {
       //This bit forces the search results to show loading on the clicked item, and then reset it back to being able to be added
       this.formatSearchList(this.state.timeresults);
@@ -320,7 +338,7 @@ class Room extends Component {
   //Remove whatever is in now playing, replace with first thing from queue, remove from queue, add to history, and
   //then begin song
   handleSongEnd = () => {
-    if(this.state.isAdmin) {
+    if(this.state.isOwner) {
       this.setState({playing: false});
       firebase.database().ref('room/' + this.state.room + '/nowplaying').remove();
       //Acquire first thing from queue
@@ -374,7 +392,7 @@ class Room extends Component {
   handlePublic = () => {
     if(!this.state.isPublic) {
       //add to public list
-      firebase.database().ref('room/' + this.state.room).set({
+      firebase.database().ref('room/' + this.state.room).update({
         isPublic: true
       }).then(() => {
         firebase.database().ref('list/' + this.state.room).update({
@@ -384,7 +402,7 @@ class Room extends Component {
       this.setState({isPublic: true});
     } else {
       //remove from public list
-      firebase.database().ref('room/' + this.state.room).set({
+      firebase.database().ref('room/' + this.state.room).update({
         isPublic: false
       }).then(() => {
         firebase.database().ref('list/' + this.state.room).remove();
@@ -392,6 +410,29 @@ class Room extends Component {
       this.setState({isPublic: false});
     }
     this.setState({publicModal: false});
+  }
+
+  handleAllAdmin = () => {
+    if(this.state.isOwner) {
+      if(!this.state.allAdmin) {
+        //add to public list
+        firebase.database().ref('room/' + this.state.room).update({
+          allAdmin: true
+        });
+        this.setState({allAdmin: true, isAdmin: true});
+      } else {
+        //remove from public list
+        firebase.database().ref('room/' + this.state.room).update({
+          allAdmin: false
+        })
+        this.setState({allAdmin: false});
+      }
+    }
+    if(this.state.allAdmin) {
+      this.setState({isAdmin: true});
+    } else {
+      if(!this.state.isOwner) this.setState({isAdmin: false});
+    }
   }
 
   handlePlayerError = error => {
@@ -447,10 +488,12 @@ class Room extends Component {
                 </div>
               </div>
               <div className="level-right">
-                {this.state.isAdmin &&
+                {this.state.isAdmin || el.uid === this.state.uid ?
                 <div className="level-item">
                   <a className="button" onClick={() => this.handleDelete('q', Object.keys(name)[0])}><i className="fa fa-trash"></i></a>
                 </div>
+                :
+                null
                 }
               </div>
             </nav>
@@ -504,6 +547,9 @@ class Room extends Component {
                 <div className="level-left">
                 </div>
                 <div className="level-right">
+                  <div className="level-item">
+                    <a className={this.state.allAdmin ? "button is-info" : "button is-warning"} onClick={this.handleAllAdmin}>{this.state.allAdmin ? 'Remove Admin Rights' : 'Give Admin Rights'}</a>
+                  </div>
                   <div className="level-item">
                     {this.state.isPublic !== null ?
                       <button className={this.state.isPublic ? "button is-dark" : "button is-primary"} onClick={() => this.setState({publicModal: true})}>{this.state.isPublic ? 'Go Private' : 'Go Public'}</button>
