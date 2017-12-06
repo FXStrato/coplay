@@ -89,7 +89,8 @@ class Room extends Component {
         }
         let stopPlaying = snapshot.val();
         stopPlaying.playing = false;
-        let temp = "https://www.youtube.com/v/" + snapshot.val().id + "?playlist=" + snapshot.val().id + "&autoplay=1&rel=0";
+        //let temp = "https://www.youtube.com/watch?v=" + snapshot.val().id;
+        let temp = "https://www.youtube.com/v/" + snapshot.val().id + "?playlist=" + snapshot.val().id;
         this.setState({url: temp, nowPlaying: stopPlaying});
       }
     });
@@ -99,8 +100,11 @@ class Room extends Component {
         if(this.state.nowPlaying) {
           if(snapshot.val().playedSeconds !== this.state.nowPlaying.playedSeconds) this.setState({initPlaying: false});
         }
-        let temp = "https://www.youtube.com/v/" + snapshot.val().id + "?playlist=" + snapshot.val().id + "&autoplay=1&rel=0";
-        this.setState({url: temp, playing: snapshot.val().playing, nowPlaying: snapshot.val()})
+        //let temp = "https://www.youtube.com/watch?v=" + snapshot.val().id;
+        if(!this.state.isOwner) {
+          let temp = "https://www.youtube.com/v/" + snapshot.val().id + "?playlist=" + snapshot.val().id;
+          this.setState({url: temp, playing: snapshot.val().playing, nowPlaying: snapshot.val()})
+        }
       } else {
         //no more song in nowPlaying, clear it out
         this.setState({url: null, nowPlaying: null, playing: false})
@@ -189,8 +193,9 @@ class Room extends Component {
   }
 
   onReady = () => {
+    console.log('onReady called, this.state.playing: ', this.state.playing);
     this.setState({playerReady: true});
-    if(this.state.nowPlaying.playing) this.handlePlay(true);
+    //if(this.state.nowPlaying.playing) this.handlePlay(true);
   }
 
   //Save input value to state
@@ -332,14 +337,13 @@ class Room extends Component {
   }
 
   handleBuffer = () => {
-    console.log('Buffering');
+    //console.log('Buffering');
   }
 
   //Remove whatever is in now playing, replace with first thing from queue, remove from queue, add to history, and
   //then begin song
   handleSongEnd = () => {
     if(this.state.isOwner) {
-      this.setState({playing: false});
       firebase.database().ref('room/' + this.state.room + '/nowplaying').remove();
       //Acquire first thing from queue
       let queueItem;
@@ -369,7 +373,8 @@ class Room extends Component {
               thumbnail: queueItem.thumbnail,
             });
             //Create url for ReactPlayer
-            let temp = "https://www.youtube.com/v/" + queueItem.id + "?playlist=" + queueItem.id + "&autoplay=1&rel=0";
+            //let temp = "https://www.youtube.com/watch?v=" + queueItem.id;
+            let temp = "https://www.youtube.com/v/" + queueItem.id + "?playlist=" + queueItem.id;
             this.setState({url: temp, nowPlaying: queueItem, nowPlayingKey: queueID});
           })
         } else {
@@ -537,6 +542,17 @@ class Room extends Component {
   }
 
   render() {
+    let configVars = {
+      youtube: {
+        playerVars: {
+          rel: 0,
+          enablejsapi: 1,
+          showinfo: 0,
+        },
+        preloading: true
+      }
+    }
+
     return (
       <section className="section">
         <div className="container">
@@ -621,8 +637,8 @@ class Room extends Component {
                 <nav className="level">
                   <div className="level-left">
                     <div className="level-item">
-                      {this.state.nowPlaying.title} <br/>
-                      {this.state.nowPlaying.duration}
+                      <div className="truncate">{this.state.nowPlaying.title}</div>
+                      <div>|{this.state.nowPlaying.duration}</div>
                     </div>
                   </div>
                     <div className="level-right">
@@ -657,7 +673,7 @@ class Room extends Component {
                 :
                 null
               }
-                <ReactPlayer ref={this.ref} style={this.state.isAdmin ? {pointerEvents: 'auto'} : {pointerEvents: 'none'}} width="100%" url={this.state.url} config={{youtube:{preload: true}}} controls={this.state.isAdmin} playing={this.state.playing} volume={this.state.volume} onReady={this.onReady} progressFrequency={500} onProgress={this.handleProgress} onPlay={() => this.handlePlay(true)} onPause={() => this.handlePlay(false)} onBuffer={this.handleBuffer} onEnded={this.handleSongEnd} onError={this.handlePlayerError} />
+                <ReactPlayer ref={this.ref} style={this.state.isAdmin ? {pointerEvents: 'auto'} : {pointerEvents: 'none'}} width="100%" url={this.state.url} config={configVars} controls={false} playing={this.state.playing} volume={this.state.volume} onReady={this.onReady} progressFrequency={500} onProgress={this.handleProgress} onPlay={() => this.handlePlay(true)} onPause={() => this.handlePlay(false)} onBuffer={this.handleBuffer} onEnded={this.handleSongEnd} onError={this.handlePlayerError} />
               </div>
               <div className="column">
                 <form onSubmit={this.handleSearch}>
