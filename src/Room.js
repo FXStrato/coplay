@@ -101,10 +101,8 @@ class Room extends Component {
           if(snapshot.val().playedSeconds !== this.state.nowPlaying.playedSeconds) this.setState({initPlaying: false});
         }
         //let temp = "https://www.youtube.com/watch?v=" + snapshot.val().id;
-        if(!this.state.isOwner) {
-          let temp = "https://www.youtube.com/v/" + snapshot.val().id + "?playlist=" + snapshot.val().id;
-          this.setState({url: temp, playing: snapshot.val().playing, nowPlaying: snapshot.val()})
-        }
+        let temp = "https://www.youtube.com/v/" + snapshot.val().id + "?playlist=" + snapshot.val().id;
+        this.setState({url: temp, playing: snapshot.val().playing, nowPlaying: snapshot.val()})
       } else {
         //no more song in nowPlaying, clear it out
         this.setState({url: null, nowPlaying: null, playing: false})
@@ -267,7 +265,7 @@ class Room extends Component {
           duration : this.state.nowPlaying.duration,
           thumbnail: this.state.nowPlaying.thumbnail,
           playedSeconds: data.playedSeconds,
-          playing: this.state.nowPlaying.playing,
+          playing: true,
         }
         let updates = {};
         updates['room/' + this.state.room + '/nowplaying/'] = nowPlaying;
