@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import {Link} from 'react-router-dom';
 import firebase from 'firebase';
 import randomize from 'randomatic';
+import generate from 'project-name-generator';
 
 class Navigation extends Component {
 
@@ -78,16 +79,18 @@ class Navigation extends Component {
 
   createRoom = () => {
     //Created rooms are initially private
-    let roomName = randomize('Aa0', 16);
+    let roomID = randomize('Aa0', 16);
+    let roomName = generate().spaced;
     if(!this.state.ownRoom) {
       firebase.database().ref('associations/' + this.state.uid).set({
-        ownRoom: roomName
+        ownRoom: roomID
       }).then((response) => {
-        firebase.database().ref('room/' + roomName).set({
+        firebase.database().ref('room/' + roomID).set({
           isPublic: false,
           allAdmin: false,
+          roomName: roomName
         });
-        this.props.history.push('room/' + roomName);
+        this.props.history.push('room/' + roomID);
       });
     } else {
       this.props.history.push('room/' + this.state.ownRoom);

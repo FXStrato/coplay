@@ -7,6 +7,7 @@
     "firebase": "^4.6.2",
     "lodash": "^4.17.4",
     "moment": "^2.19.2",
+    "project-name-generator": "^2.1.4",
     "prop-types": "^15.6.0",
     "randomatic": "^2.0.0",
     "rc-slider": "^8.4.1",

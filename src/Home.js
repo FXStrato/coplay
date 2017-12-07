@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import {Link} from 'react-router-dom';
 import firebase from 'firebase';
 import randomize from 'randomatic';
+import generate from 'project-name-generator';
 
 class Home extends Component {
   state = {
@@ -38,16 +39,18 @@ class Home extends Component {
 
   createRoom = () => {
     //Created rooms are initially private
-    let roomName = randomize('Aa0', 16);
+    let roomID = randomize('Aa0', 16);
+    let roomName = generate().spaced;
     if(!this.state.ownRoom) {
       firebase.database().ref('associations/' + this.state.uid).set({
-        ownRoom: roomName
+        ownRoom: roomID
       }).then((response) => {
-        firebase.database().ref('room/' + roomName).set({
+        firebase.database().ref('room/' + roomID).set({
           isPublic: false,
           allAdmin: false,
+          roomName: roomName
         });
-        this.props.history.push('room/' + roomName);
+        this.props.history.push('room/' + roomID);
       });
     } else {
       this.props.history.push('room/' + this.state.ownRoom);
@@ -71,6 +74,11 @@ class Home extends Component {
         </section>
         <section className="section">
           <div className="container">
+            <div className="columns">
+              <div className="column">
+                <p>Note: Please use Firefox for the best experience; Chrome can cause issues with autoplay while in a background tab</p>
+              </div>
+            </div>
             <div className="columns">
               <div className="column has-text-centered">
                 <div className="title">Start A Playlist</div>

@@ -14,6 +14,7 @@ class Room extends Component {
     isOwner: false,
     isPublic: null,
     allAdmin: null,
+    roomName: null,
     viewers: 0,
     open: false,
     volume: 0.5,
@@ -50,7 +51,7 @@ class Room extends Component {
             }
             firebase.database().ref('room/' + this.state.room).once('value').then((snapshot) => {
               if(snapshot.val()) {
-                this.setState({isPublic: snapshot.val().isPublic, isAdmin: isAdmin, allAdmin: snapshot.val().allAdmin});
+                this.setState({isPublic: snapshot.val().isPublic, isAdmin: isAdmin, allAdmin: snapshot.val().allAdmin, roomName: snapshot.val().roomName});
               }
             });
             this.setState({isAdmin: isAdmin});
@@ -396,10 +397,11 @@ class Room extends Component {
     if(!this.state.isPublic) {
       //add to public list
       firebase.database().ref('room/' + this.state.room).update({
-        isPublic: true
+        isPublic: true,
       }).then(() => {
         firebase.database().ref('list/' + this.state.room).update({
-          isPublic: true
+          isPublic: true,
+          roomName: this.state.roomName
         });
       });
       this.setState({isPublic: true});
@@ -559,6 +561,9 @@ class Room extends Component {
               {this.state.isOwner &&
               <nav className="level">
                 <div className="level-left">
+                  <div className="level-item">
+                    <div className="title is-5">Room Name: <span className="heading">{this.state.roomName}</span></div>
+                  </div>
                 </div>
                 <div className="level-right">
                   {/* <div className="level-item">
