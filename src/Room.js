@@ -67,7 +67,7 @@ class Room extends Component {
   }
 
   componentDidMount = () => {
-    //window.removeEventListener('close', this.handleWindowClose());
+    //window.addEventListener('beforeunload', this.handleUnload);
     document.getElementById("default-tab").click();
     this.roomRef = firebase.database().ref('room/' + this.state.room);
     this.queueRef = firebase.database().ref('room/' + this.state.room + '/queue');
@@ -138,6 +138,10 @@ class Room extends Component {
   }
 
   componentWillUnmount = () => {
+    // window.removeEventListener('beforeunload', (ev) => {
+    //   ev.preventDefault();
+    //   console.log('Unloading');
+    // });
     if(this.state.isOwner && this.state.nowPlaying) {
       firebase.database().ref('room/' + this.state.room + '/nowplaying').update({
         id: this.state.nowPlaying.id,
@@ -156,6 +160,12 @@ class Room extends Component {
 
   ref = player => {
     this.player = player;
+  }
+
+  handleUnload = (ev) => {
+    ev.preventDefault();
+    console.log('handle unload called');
+    return ev.returnValue = "hello";
   }
 
   openTab = (event, tab) => {
@@ -495,7 +505,7 @@ class Room extends Component {
               <div className="level-right">
                 {this.state.isAdmin || el.uid === this.state.uid ?
                 <div className="level-item">
-                  <a className="button" onClick={() => this.handleDelete('q', Object.keys(name)[0])}><i className="fa fa-trash"></i></a>
+                  <a className="button" onClick={() => this.handleDelete('q', index)}><i className="fa fa-trash"></i></a>
                 </div>
                 :
                 null
@@ -529,7 +539,7 @@ class Room extends Component {
               <div className="level-right">
                 {this.state.isAdmin &&
                 <div className="level-item">
-                  <a className="button" onClick={() => this.handleDelete('h', el.id)}><i className="fa fa-trash"></i></a>
+                  <a className="button" onClick={() => this.handleDelete('h', index)}><i className="fa fa-trash"></i></a>
                 </div>
                 }
               </div>
