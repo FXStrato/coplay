@@ -276,6 +276,7 @@ class Room extends Component {
           duration : this.state.nowPlaying.duration,
           thumbnail: this.state.nowPlaying.thumbnail,
           playedSeconds: data.playedSeconds,
+          played: data.played,
           playing: true,
         }
         let updates = {};
@@ -687,6 +688,11 @@ class Room extends Component {
                 null
               }
                 <ReactPlayer ref={this.ref} style={this.state.isAdmin ? {pointerEvents: 'auto'} : {pointerEvents: 'none'}} width="100%" url={this.state.url} config={configVars} controls={false} playing={this.state.playing} volume={this.state.volume} onReady={this.onReady} progressFrequency={500} onProgress={this.handleProgress} onPlay={() => this.handlePlay(true)} onPause={() => this.handlePlay(false)} onBuffer={this.handleBuffer} onEnded={this.handleSongEnd} onError={this.handlePlayerError} />
+                {this.state.playerReady && this.state.nowPlaying ?
+                <progress className="progress" value={this.state.nowPlaying.played ? this.state.nowPlaying.played : '0'} max="1"></progress>
+                :
+                null
+                }
               </div>
               <div className="column">
                 <form onSubmit={this.handleSearch}>
@@ -699,7 +705,7 @@ class Room extends Component {
                     </div>
                   </div>
                 </form>
-                <div className="content" style={{maxHeight: 400, overflowY: 'auto', marginTop: 5, overflowX: 'hidden'}}>
+                <div className="content" style={{maxHeight: 420, overflowY: 'auto', marginTop: 5, overflowX: 'hidden'}}>
                   <table className="table is-narrow is-hoverable is-fullwidth">
                     <tbody>
                       {this.state.formattedResults}
