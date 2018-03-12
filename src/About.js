@@ -16,9 +16,9 @@ class About extends Component {
             </div>
           </div>
           <div className="columns">
-            <div className="column"><Link to="https://reactjs.org/"><img style={{marginTop: 50}} src={reactBanner} alt="React Banner"/></Link></div>
-            <div className="column"><Link to="https://firebase.google.com/"><img src={firebaseBanner} alt="Firebase Banner"/></Link></div>
-            <div className="column"><Link to="https://bulma.io/"><img src={bulmaBanner} alt="Bulma Banner"/></Link></div>
+            <div className="column"><a href="https://reactjs.org/" target="_blank"><img style={{marginTop: 50}} src={reactBanner} alt="React Banner"/></a></div>
+            <div className="column"><a href="https://firebase.google.com/" target="_blank"><img src={firebaseBanner} alt="Firebase Banner"/></a></div>
+            <div className="column"><a href="https://bulma.io/" target="_blank"><img src={bulmaBanner} alt="Bulma Banner"/></a></div>
           </div>
         </div>
       </section>
