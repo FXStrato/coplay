@@ -1,104 +1,77 @@
 import React, { Component } from 'react';
-import {Link} from 'react-router-dom';
-import firebase from 'firebase';
-import randomize from 'randomatic';
-import generate from 'project-name-generator';
+import { Row, Col, List, Icon, Avatar, Card } from 'antd';
+
 
 class Home extends Component {
-  state = {
-    uid: null,
-    ownRoom: null,
-    rooms: {}
-  }
-
-  componentWillMount = () => {
-    firebase.auth().onAuthStateChanged((user) => {
-      if (user) {
-        // User is signed in.
-        //console.log('Acquired ID of user on Home.js', user.uid);
-        //Check to see if association of room exists
-        firebase.database().ref('associations/' + user.uid).once('value').then((snapshot) => {
-          if(!snapshot.val() || !snapshot.val().ownRoom) {
-            //Means not associated
-            this.setState({ownRoom: false});
-          } else if(snapshot.val().ownRoom) {
-            this.setState({ownRoom: snapshot.val().ownRoom});
-          } else {
-            //console.log(snapshot.val());
-          }
-        });
-        this.setState({uid: user.uid});
-        // ...
-      } else {
-        // User is signed out.
-        // ...
-      }
-      // ...
-    });
-  }
-
-  createRoom = () => {
-    //Created rooms are initially private
-    let roomID = randomize('Aa0', 16);
-    let roomName = generate().spaced;
-    if(!this.state.ownRoom) {
-      firebase.database().ref('associations/' + this.state.uid).set({
-        ownRoom: roomID
-      }).then((response) => {
-        firebase.database().ref('room/' + roomID).set({
-          isPublic: false,
-          allAdmin: false,
-          roomName: roomName
-        });
-        this.props.history.push('room/' + roomID);
-      });
-    } else {
-      this.props.history.push('room/' + this.state.ownRoom);
-    }
-  }
-
   render() {
+
+    const listData = [];
+    for (let i = 0; i < 5; i++) {
+      listData.push({
+        href: 'http://ant.design',
+        title: `Room #${i}`,
+        avatar: 'https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png',
+        description: 'Quick info about room',
+        content: 'List of tags can go here',
+      });
+    }
+
+    const pagination = {
+      pageSize: 10,
+      current: 1,
+      total: listData.length,
+      onChange: (() => {}),
+    };
+
+    const IconText = ({ type, text }) => (
+      <span>
+        <Icon type={type} style={{ marginRight: 8 }} />
+        {text}
+      </span>
+    );
+
     return (
       <div>
-        <section className="hero is-dark is-bold">
-          <div className="hero-body">
-            <div className="container">
-              <h1 className="title">
-                Welcome to CoPlay
-              </h1>
-              <h2 className="subtitle">
-                Share, join and collaborate your music
-              </h2>
-            </div>
-          </div>
-        </section>
-        <section className="section">
-          <div className="container">
-            <div className="columns">
-              <div className="column">
-                <p>Note: Please use Firefox for the best experience; Chrome can cause issues with autoplay while in a background tab</p>
-              </div>
-            </div>
-            <div className="columns">
-              <div className="column has-text-centered">
-                <div className="title">Start A Playlist</div>
-                <p>Create a room and start queueing music from Youtube</p>
-                {this.state.ownRoom !== null &&
-                <div style={{marginTop: 10}}>
-                  <a onClick={this.createRoom} className="button is-dark">{this.state.ownRoom ? 'Go To Room' : 'Create Room'}</a>
-                </div>
-                }
-              </div>
-              <div className="column has-text-centered">
-                <div className="title">Join an Existing Room</div>
-                <p>Pick a public room to join and check out what people are listening to</p>
-                <div style={{marginTop: 10}}>
-                  <Link to="/list" className="button is-info">View Rooms</Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <Row type="flex" justify="center" gutter={16}>
+          <Col sm={22}>
+            <h2>Home</h2>
+            <p>Home functionality</p>
+            <ul>
+              <li>Display of public rooms for people to join</li>
+              <li>Quick link to personal room if it is up, otherwise display link to sign up and get ability to make room</li>
+              <li>Notifications potentially in navbar?</li>
+            </ul>
+          </Col>
+          <Col sm={24} md={24} lg={11}>
+            <h2>Your Room</h2>
+            <Card title="Card title" extra={<a href="">More</a>}>
+              <p>Card content</p>
+              <p>Card content</p>
+              <p>Card content</p>
+            </Card>
+          </Col>
+          <Col sm={24} md={24} lg={11}>
+            <h2>Public Rooms</h2>
+            <List
+              bordered={true}
+              pagination={pagination}
+              dataSource={listData}
+              renderItem={item => (
+                <List.Item
+                  key={item.title}
+                  actions={[<IconText type="star-o" text="156" />, <IconText type="like-o" text="156" />, <IconText type="message" text="2" />]}
+                >
+                  <List.Item.Meta
+                    avatar={<Avatar src={item.avatar} />}
+                    title={<a href={item.href}>{item.title}</a>}
+                    description={item.description}
+                  />
+                  {item.content}
+                </List.Item>
+              )}
+            />
+          </Col>
+        </Row>
       </div>
     );
   }
