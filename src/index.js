@@ -10,7 +10,7 @@ import registerServiceWorker from './registerServiceWorker';
 
 // Initialize Firebase
   var config = {
-    apiKey: "AIzaSyAHnWjTONd9gXGE3NojGif5LfHM289dMv4",
+    apiKey: process.env.REACT_APP_FIREBASEAPIKEY,
     authDomain: "coplay-840e6.firebaseapp.com",
     databaseURL: "https://coplay-840e6.firebaseio.com",
     projectId: "coplay-840e6",
