@@ -1,7 +1,18 @@
 import React, { Component } from 'react';
 import { Row, Col } from 'antd';
+import firebase from 'firebase';
+const db = firebase.firestore();
 
 class Room extends Component {
+
+  componentWillMount = () => {
+    db.collection('test').get().then(snap => {
+      snap.forEach(el => {
+        console.log(el.id, el.data());
+      })
+    })
+  }
+
   render() {
     return (
       <div>

@@ -6,10 +6,11 @@ import firebase from 'firebase';
 import './index.css';
 import App from './App';
 import registerServiceWorker from './registerServiceWorker';
+require('firebase/firestore');
 
 // Initialize Firebase
 let config = {
-  apiKey: process.env.REACT_APP_FIREBASEAPIKEY,
+  apiKey: process.env.REACT_APP_FIREBASEAPIKEY2,
   authDomain: "coplay-2.firebaseapp.com",
   databaseURL: "https://coplay-2.firebaseio.com",
   projectId: "coplay-2",
