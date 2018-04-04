@@ -70,7 +70,7 @@ class Room extends Component {
               </Tabs>
             </Card>
           </Col>
-          <Col md={24} lg={6}>
+          <Col md={24} lg={6} className="hide-on-med-and-down">
             <h2>Chat window</h2>
           </Col>
         </Row>

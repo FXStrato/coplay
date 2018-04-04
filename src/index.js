@@ -5,6 +5,7 @@ import { BrowserRouter as Router } from 'react-router-dom';
 import firebase from 'firebase';
 import './index.css';
 import './animate.css';
+import 'react-virtualized/styles.css';
 import App from './App';
 import registerServiceWorker from './registerServiceWorker';
 require('firebase/firestore');
