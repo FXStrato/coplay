@@ -1,8 +1,10 @@
 import React, { Component } from 'react';
 import { Row, Col, Card, Tabs, Badge } from 'antd';
+import firebase from 'firebase';
 import Loadable from 'react-loadable';
 import Loading from './Loading';
 const TabPane = Tabs.TabPane;
+const db = firebase.firestore();
 const Current = Loadable({
   loader: () =>
     import('./Room/Current'),
@@ -38,6 +40,11 @@ class Room extends Component {
   }
 
   componentWillMount = () => {
+    db.collection('test').get().then(snap => {
+      snap.forEach(el => {
+        console.log(el.id, el.data());
+      })
+    })
     if(window.innerWidth <= 768) {
       //Change tab to top
       this.setState({tabPosition: 'top', tabSize: 'small'});
