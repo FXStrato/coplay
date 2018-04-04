@@ -175,7 +175,7 @@ class Search extends Component {
             />
           </Col>
         </Row>
-        <Row onScroll={this.handleScroll} style={{marginTop: 10, height: '65vh', overflow: 'auto', padding: 8}}>
+        <Row onScroll={this.handleScroll} style={{marginTop: 10, maxHeight: '65vh', overflow: 'auto', padding: 8}}>
           <Col span={24}>
             <Spin spinning={this.state.loading} className="center">
               {this.state.data && this.state.durations ?

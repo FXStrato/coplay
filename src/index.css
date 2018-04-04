@@ -100,6 +100,11 @@ video.responsive-video {
     display: none !important;
   }
 }
+@media only screen and (max-width: 1200px) {
+  .hide-on-large-and-down {
+    display: none !important;
+  }
+}
 @media only screen and (min-width: 577px) {
   .hide-on-med-and-up {
     display: none !important;

@@ -59,7 +59,7 @@ class Room extends Component {
     return (
       <div>
         <Row gutter={16}>
-          <Col sm={24} md={24} lg={18}>
+          <Col sm={24} md={24} lg={24} xl={18}>
             <Card style={{width: '100%'}}>
               <Tabs defaultActiveKey="1" tabPosition={this.state.tabPosition} size={this.state.tabSize}>
                 <TabPane tab={<span>Now Playing</span>} key="1"><Current/></TabPane>
@@ -70,7 +70,7 @@ class Room extends Component {
               </Tabs>
             </Card>
           </Col>
-          <Col md={24} lg={6} className="hide-on-med-and-down">
+          <Col md={24} lg={24} xl={6} className="hide-on-large-and-down">
             <h2>Chat window</h2>
           </Col>
         </Row>

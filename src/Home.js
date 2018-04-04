@@ -32,7 +32,7 @@ class Home extends Component {
     return (
       <div>
         <Row gutter={16}>
-          <Col sm={24} md={24} lg={11}>
+          <Col sm={24} md={24} lg={24} xl={11}>
             <h2>Your Room</h2>
             <Card style={{width: "100%"}} title="Card title" extra={<a href="">More</a>}>
               <h2>Home</h2>
@@ -44,7 +44,7 @@ class Home extends Component {
               </ul>
             </Card>
           </Col>
-          <Col sm={24} md={24} lg={11}>
+          <Col sm={24} md={24} lg={24} xl={11}>
             <h2>Public Rooms</h2>
             <List
               bordered={true}
