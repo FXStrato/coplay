@@ -4,7 +4,6 @@ import { Row, Col, List, Icon, Avatar, Card } from 'antd';
 
 class Home extends Component {
   render() {
-
     const listData = [];
     for (let i = 0; i < 5; i++) {
       listData.push({
@@ -32,22 +31,17 @@ class Home extends Component {
 
     return (
       <div>
-        <Row type="flex" justify="center" gutter={16}>
-          <Col sm={22}>
-            <h2>Home</h2>
-            <p>Home functionality</p>
-            <ul>
-              <li>Display of public rooms for people to join</li>
-              <li>Quick link to personal room if it is up, otherwise display link to sign up and get ability to make room</li>
-              <li>Notifications potentially in navbar?</li>
-            </ul>
-          </Col>
+        <Row gutter={16}>
           <Col sm={24} md={24} lg={11}>
             <h2>Your Room</h2>
-            <Card title="Card title" extra={<a href="">More</a>}>
-              <p>Card content</p>
-              <p>Card content</p>
-              <p>Card content</p>
+            <Card style={{width: "100%"}} title="Card title" extra={<a href="">More</a>}>
+              <h2>Home</h2>
+              <p>Home functionality</p>
+              <ul>
+                <li>Display of public rooms for people to join</li>
+                <li>Quick link to personal room if it is up, otherwise display link to sign up and get ability to make room</li>
+                <li>Notifications potentially in navbar?</li>
+              </ul>
             </Card>
           </Col>
           <Col sm={24} md={24} lg={11}>

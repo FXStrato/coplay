@@ -10,6 +10,11 @@
   Utility Classes
 *******************/
 
+.list-image {
+  width: 100%;
+  max-width: 250px;
+}
+
 .hide {
   display: none !important;
 }

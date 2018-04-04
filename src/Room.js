@@ -1,24 +1,70 @@
 import React, { Component } from 'react';
-import { Row, Col } from 'antd';
+import { Row, Col, Card, Tabs, Badge } from 'antd';
+import Loadable from 'react-loadable';
+import Loading from './Loading';
+const TabPane = Tabs.TabPane;
+const Current = Loadable({
+  loader: () =>
+    import('./Room/Current'),
+  loading: Loading
+});
+const Search = Loadable({
+  loader: () =>
+    import('./Room/Search'),
+  loading: Loading
+});
+const History = Loadable({
+  loader: () =>
+    import('./Room/History'),
+  loading: Loading
+});
+const Queue = Loadable({
+  loader: () =>
+    import('./Room/Queue'),
+  loading: Loading
+});
+const Playlists = Loadable({
+  loader: () =>
+    import('./Room/Playlists'),
+  loading: Loading
+});
 
 class Room extends Component {
+
+  state = {
+    tab: 'current',
+    tabPosition: 'left',
+    tabSize: 'large'
+  }
+
+  componentWillMount = () => {
+    if(window.innerWidth <= 768) {
+      //Change tab to top
+      this.setState({tabPosition: 'top', tabSize: 'small'});
+    }
+  }
+
+  onTabChange = (key) => {
+   this.setState({ tab: key });
+ }
+
   render() {
     return (
       <div>
-        <Row>
-          <Col sm={24}>
-            <h3>Room</h3>
-            <p>
-              Room should have this functionality:
-            </p>
-            <ul>
-              <li>Room owner should have complete control of room while they are in it, play/pause, skip or remove song, add song, etc.</li>
-              <li>Option to go public, or stay private</li>
-              <li>A queue, and also a history of played songs</li>
-              <li>Display of number of people in room</li>
-              <li>Potentially a chat system</li>
-              <li>Must have an account to create a room</li>
-            </ul>
+        <Row gutter={16}>
+          <Col sm={24} md={24} lg={18}>
+            <Card style={{width: '100%'}}>
+              <Tabs defaultActiveKey="1" tabPosition={this.state.tabPosition} size={this.state.tabSize}>
+                <TabPane tab={<span>Now Playing</span>} key="1"><Current/></TabPane>
+                <TabPane tab={<span>Search</span>} key="2"><Search/></TabPane>
+                <TabPane tab={<span>Queue <Badge count={2}/></span>} key="3"><Queue/></TabPane>
+                <TabPane tab={<span>History</span>} key="4"><History/></TabPane>
+                <TabPane tab={<span>Playlists</span>} key="5"><Playlists/></TabPane>
+              </Tabs>
+            </Card>
+          </Col>
+          <Col md={24} lg={6}>
+            <h2>Chat window</h2>
           </Col>
         </Row>
       </div>
