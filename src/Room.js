@@ -3,8 +3,8 @@ import { Row, Col, Card, Tabs, Badge } from 'antd';
 import firebase from 'firebase';
 import Loadable from 'react-loadable';
 import Loading from './Loading';
-const TabPane = Tabs.TabPane;
 const db = firebase.firestore();
+const TabPane = Tabs.TabPane;
 const Current = Loadable({
   loader: () =>
     import('./Room/Current'),
@@ -39,16 +39,19 @@ class Room extends Component {
     tabSize: 'large'
   }
 
+  //TODO: Write a function that will add to a queueSize field in the room whenever the queue collection is added to, and to remove from it as well
   componentWillMount = () => {
-    db.collection('test').get().then(snap => {
-      snap.forEach(el => {
-        console.log(el.id, el.data());
-      })
+    this.queueRef = db.collection("rooms").doc("ABC").onSnapshot(doc => {
+      console.log('current data', doc.data());
     })
     if(window.innerWidth <= 768) {
       //Change tab to top
       this.setState({tabPosition: 'top', tabSize: 'small'});
     }
+  }
+
+  componentWillUnmount = () => {
+    this.queueRef();
   }
 
   onTabChange = (key) => {

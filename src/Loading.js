@@ -5,7 +5,7 @@ class Loading extends Component {
   render() {
     return (
       <Row>
-        <Col span={24} className="center-align">
+        <Col span={24} className="center" style={{paddingTop: 10}}>
           <Spin/>
         </Col>
       </Row>

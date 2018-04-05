@@ -3,9 +3,11 @@ import { Row, Col, Input, List, message, Spin, Button } from 'antd';
 import ProgressiveImage from 'react-progressive-image-loading';
 import Img from 'react-image';
 import Lazy from 'react-lazy-load';
+import firebase from 'firebase';
 import moment from 'moment';
 import 'moment-duration-format';
 const SearchInput = Input.Search;
+const db = firebase.firestore();
 
 class Search extends Component {
 
@@ -15,20 +17,11 @@ class Search extends Component {
     data: null,
     durations: null,
     resultsLoad: false,
-    rowHeight: 170,
-    list: [],
     loadedNumber: 0
   }
 
-  componentWillMount = () => {
-    if (window.innerWidth <= 768) {
-      //Change list row height
-      this.setState({ rowHeight: 400 });
-    }
-  }
-
   renderList = (data, durations) => {
-    let temp = data.items.map((el, index) => {
+    return data.items.map((el, index) => {
       let duration = this.formatDuration(durations.items[index].contentDetails.duration);
       return (
         <List.Item key={`listitem-${index}`} className="center"
@@ -40,23 +33,50 @@ class Search extends Component {
             description={el.snippet.description.substring(0, 100) + '...'}
           />
           <div>
-            <Button>Add To Queue</Button>
+            <Button loading={el.isLoading} onClick={() => this.handleAdd(index)}>Add To Queue</Button>
           </div>
         </List.Item>
       );
     });
-    this.setState({ list: temp })
   }
 
+  handleAdd = (index) => {
+    let temp = this.state.data;
+    temp.items[index].isLoading = true;
+    this.setState({data: temp});
+    db.collection("rooms").doc("ABC").collection("queue").add({
+      song: temp.items[index].snippet,
+      videoId: temp.items[index].id.videoId,
+      duration: this.state.durations.items[index].contentDetails.duration,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(ref => {
+      temp.items[index].isLoading = false;
+      temp.items[index].isAdded = true;
+      this.setState({data: temp});
+      message.success(`${temp.items[index].snippet.title} added to queue`);
+    }).catch(err => {
+      temp.items[index].isLoading = false;
+      temp.items[index].isAdded = false;
+      this.setState({data: temp});
+      message.success(`${temp.items[index].snippet.title} unable to be added, check console for error`);
+      console.log(err);
+    });
+  }
 
   handleSearch = (value) => {
-    this.setState({ value });
+    this.setState({ value, loading: true});
     this.getResults(value, null).then(res => {
       if (!res.error) {
         this.setState({ data: res });
         this.getDurations(res).then(res => {
           if (!res.error) {
-            this.setState({ durations: res, loading: false });
+            let newData = this.state.data;
+            newData.items = newData.items.map((el) => {
+              let elem = el;
+              elem.isLoading = false;
+              return elem;
+            });
+            this.setState({ durations: res, loading: false, data: newData });
             this.renderList(this.state.data, res);
           } else {
             console.log(res);
@@ -92,8 +112,14 @@ class Search extends Component {
             let temp = this.state.durations;
             temp.items = temp.items.concat(res.items);
             if (!res.error) {
-              this.setState({ durations: temp, resultsLoad: false });
-              this.renderList(this.state.data, temp);
+              let newData = this.state.data;
+              newData.items = newData.items.map((el) => {
+                let elem = el;
+                elem.isLoading = false;
+                return elem;
+              });
+              this.setState({ durations: temp, resultsLoad: false, data: newData });
+              this.renderList(newData, temp);
             } else {
               console.log(res);
               message.error(res.error.message);
@@ -158,10 +184,13 @@ class Search extends Component {
 
   formatDuration = (d) => {
     if (d === "PT0S") return "LIVE";
-    return moment.duration(d).format('HH:mm:ss');
+    return moment.duration(d).format('H:mm:ss');
   }
 
   render() {
+
+    let list;
+    if(this.state.data && this.state.durations) list = this.renderList(this.state.data, this.state.durations);
 
     return (
       <div>
@@ -177,10 +206,10 @@ class Search extends Component {
         </Row>
         <Row onScroll={this.handleScroll} style={{marginTop: 10, maxHeight: '65vh', overflow: 'auto', padding: 8}}>
           <Col span={24}>
-            <Spin spinning={this.state.loading} className="center">
+            <Spin spinning={this.state.loading} className="center" style={{width: '100%'}}>
               {this.state.data && this.state.durations ?
                 <List itemLayout="vertical">
-                  {this.state.list}
+                  {list}
                 </List>
                 :
                 null}
