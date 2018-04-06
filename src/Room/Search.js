@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import { Row, Col, Input, List, message, Spin, Button } from 'antd';
 import ProgressiveImage from 'react-progressive-image-loading';
 import Img from 'react-image';
-import Lazy from 'react-lazy-load';
+import LazyLoad from 'react-lazyload';
 import firebase from 'firebase';
 import moment from 'moment';
 import 'moment-duration-format';
@@ -10,6 +10,7 @@ const SearchInput = Input.Search;
 const db = firebase.firestore();
 
 class Search extends Component {
+
 
   state = {
     loading: false,
@@ -26,8 +27,8 @@ class Search extends Component {
       return (
         <List.Item key={`listitem-${index}`} className="center"
           actions={[<span>{el.snippet.channelTitle}</span>, <span>{duration}</span>]}
-          extra={<Lazy offsetVertical={1000} className="list-image" debounce={false} throttle={500}>
-            <ProgressiveImage preview={el.snippet.thumbnails.medium.url} src={el.snippet.thumbnails.medium.url} render={(src, style) => <Img className="responsive-img shadow" style={style} src={src} alt={`${el.id.videoId}-thumbnail`}/>}/></Lazy>}>
+          extra={<LazyLoad height={'100%'} overflow={true}>
+            <ProgressiveImage preview={el.snippet.thumbnails.medium.url} src={el.snippet.thumbnails.medium.url} render={(src, style) => <Img className="list-image shadow" style={style} src={src} alt={`${el.id.videoId}-thumbnail`}/>}/></LazyLoad>}>
           <List.Item.Meta
             title={el.snippet.title}
             description={el.snippet.description.substring(0, 100) + '...'}
@@ -45,7 +46,11 @@ class Search extends Component {
     temp.items[index].isLoading = true;
     this.setState({data: temp});
     db.collection("rooms").doc("ABC").collection("queue").add({
-      song: temp.items[index].snippet,
+      url: 'https://www.youtube.com/watch?v=' + temp.items[index].id.videoId + '&list=' + temp.items[index].id.videoId,
+      title: temp.items[index].snippet.title,
+      description: temp.items[index].snippet.description,
+      thumbnails: temp.items[index].snippet.thumbnails,
+      channelTitle: temp.items[index].snippet.channelTitle,
       videoId: temp.items[index].id.videoId,
       duration: this.state.durations.items[index].contentDetails.duration,
       timestamp: firebase.firestore.FieldValue.serverTimestamp()

@@ -1,5 +1,5 @@
 {
-  "name": "react-antd-starter",
+  "name": "coplay2.0",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -12,7 +12,7 @@
     "react": "^16.2.0",
     "react-dom": "^16.2.0",
     "react-image": "^1.3.1",
-    "react-lazy-load": "^3.0.13",
+    "react-lazyload": "^2.3.0",
     "react-loadable": "^5.3.1",
     "react-player": "^1.3.1",
     "react-progressive-image-loading": "^3.0.2",

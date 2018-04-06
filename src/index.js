@@ -9,6 +9,7 @@ import 'react-virtualized/styles.css';
 import App from './App';
 import registerServiceWorker from './registerServiceWorker';
 require('firebase/firestore');
+require("firebase/functions");
 
 // Initialize Firebase
 let config = {

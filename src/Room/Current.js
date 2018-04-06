@@ -1,18 +1,24 @@
 import React, { Component } from 'react';
-import { Row, Col, Icon, Button, Progress, Card, Spin, Slider } from 'antd';
+import { Row, Col, Icon, Button, Progress, Card, Spin, Slider, Divider } from 'antd';
+import Img from 'react-image';
 import ReactPlayer from 'react-player';
+import firebase from 'firebase';
+import moment from 'moment';
+import 'moment-duration-format';
+const db = firebase.firestore();
+const functions = firebase.functions();
 const playerSettings = {
   youtube: {
     playerVars: {
       rel: 0,
       modestbranding: 1,
       showinfo: 1,
-      enablejsapi: 1,
       controls: 0
     },
     preload: true
   }
 }
+
 
 class Current extends Component {
 
@@ -24,14 +30,41 @@ class Current extends Component {
     loaded: null,
     volume: 0.5,
     muted: false,
-    playerHeight: 330,
+    playerHeight: 300,
+    np: null // now playing object
   }
 
   componentWillMount = () => {
+    db.collection('rooms').doc('ABC').onSnapshot(doc => {
+      if(!doc.data().np) this.setState({playerLoading: false});
+      else {
+        this.setState({np: doc.data().np, playerLoading: false});
+      }
+    })
     if(window.innerWidth <= 768) {
       //Change tab to top
       this.setState({playerHeight: 200});
     }
+  }
+
+  handleSlider = volume => {
+    this.setState({volume});
+  }
+
+  // replace currently playing with the first item in queue
+  handleSkip = () => {
+    let overwrite = this.props.queuefirst;
+    if(overwrite) overwrite.playing = this.state.playing;
+    this.setState({playing: false, playerLoading: true, duration: null});
+    let skip = functions.httpsCallable('handleSkip');
+    skip({room: 'ABC', np: this.props.queuefirst}).then(res => {
+      // If skip occured, remove first item from queue if there is anything in queue
+      if(this.props.queuefirst) db.collection('rooms').doc('ABC').collection('queue').doc(this.props.queuefirst.fbid).delete();
+      this.setState({playerLoading: false});
+    }).catch(err => {
+      this.setState({playerLoading: false});
+      console.log(err);
+    });
   }
 
   format = (seconds) => {
@@ -49,10 +82,10 @@ class Current extends Component {
     return ('0' + string).slice(-2)
   }
 
-  handleSlider = volume => {
-    this.setState({volume});
+  formatDuration = (d) => {
+    if (d === "PT0S") return "LIVE";
+    return moment.duration(d).format('H:mm:ss');
   }
-
 
   render() {
     return (
@@ -63,18 +96,24 @@ class Current extends Component {
               <Card bordered={false} style={{marginTop: -15}}>
                 <Row>
                   <Col sm={24}>
+                    {this.state.np ?
                     <ReactPlayer
+                      url={this.state.np.url}
+                      ref={q => {this.player = q}}
                       style={{pointerEvents: 'none'}}
                       config={playerSettings}
                       onReady={() => this.setState({playerLoading: false})}
                       onDuration={(duration) => this.setState({duration})}
                       onProgress={(prog) => this.setState(prog)}
+                      onError={e => console.log('onError', e)}
                       volume={this.state.volume}
                       muted={this.state.muted}
-                      url="https://www.youtube.com/watch?v=f1eMI0d-1Hs&index=18&list=RDQMafxMjeg1qBc"
                       playing={this.state.playing}
                       width="100%"
                       height={this.state.playerHeight} />
+                    :
+                    <div style={{height: this.state.playerHeight}}></div>
+                    }
                   </Col>
                   <Col sm={24} className="center">
                     <Progress percent={this.state.played * 100 || 0} size="small" showInfo={false} />
@@ -107,7 +146,7 @@ class Current extends Component {
                     </Button>
                   </Col>
                   <Col xs={12} sm={12} md={4} className="center">
-                    <Button style={{border: 'none'}} type="secondary" ghost={false}>
+                    <Button disabled={this.state.np || this.props.queuefirst ? false: true} onClick={this.handleSkip} style={{border: 'none'}} type="secondary" ghost={false}>
                       <Icon type="step-forward"/>
                     </Button>
                   </Col>
@@ -116,18 +155,28 @@ class Current extends Component {
             </Spin>
           </Col>
           <Col sm={24} md={24} lg={10}>
-            <h3>Currently Playing</h3>
-            <p>
-              Room should have this functionality:
-            </p>
-            <ul>
-              <li>Room owner should have complete control of room while they are in it, play/pause, skip or remove song, add song, etc.</li>
-              <li>Option to go public, or stay private</li>
-              <li>A queue, and also a history of played songs</li>
-              <li>Display of number of people in room</li>
-              <li>Potentially a chat system</li>
-              <li>Must have an account to create a room</li>
-            </ul>
+            {this.state.np &&
+            <Row type="flex" align="middle" justify="center" style={{marginTop: 15}}>
+              <Col xs={24} className="center"><h3>Currently Playing</h3></Col>
+              <Col xs={24} className="center">
+                <h4>{this.state.np.title}</h4>
+                <p>{this.state.np.channelTitle}</p>
+              </Col>
+              <Divider/>
+            </Row>
+            }
+            {this.props.queuefirst &&
+            <Row type="flex" align="middle" justify="center" gutter={16}>
+              <Col xs={24} className="center"><h3>Next In Queue</h3></Col>
+              <Col xs={24} sm={24} md={12} lg={6}>
+                <Img className="responsive-img" src={this.props.queuefirst.thumbnails.medium.url} alt={`${this.props.queuefirst.videoId}-thumbnail`}/>
+              </Col>
+              <Col xs={24} sm={24} md={12} lg={12}>
+                <div className="truncate">{this.props.queuefirst.title}</div>
+                <div>{this.props.queuefirst.channelTitle} | {this.formatDuration(this.props.queuefirst.duration)}</div>
+              </Col>
+            </Row>
+            }
           </Col>
         </Row>
       </div>

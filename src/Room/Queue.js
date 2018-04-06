@@ -1,8 +1,7 @@
 import React, { Component } from 'react';
 import { Row, Col, List, Icon, Button, Popconfirm, Pagination } from 'antd';
-import ProgressiveImage from 'react-progressive-image-loading';
 import Img from 'react-image';
-import Lazy from 'react-lazy-load';
+import LazyLoad from 'react-lazyload';
 import firebase from 'firebase';
 import moment from 'moment';
 import 'moment-duration-format';
@@ -11,12 +10,22 @@ const db = firebase.firestore();
 class Queue extends Component {
 
   state = {
+    data: this.props.queue,
     loading: false,
-    data: null,
     page: 1,
     pageSize: 5,
     total: null,
     listType: 'horizontal'
+  }
+
+  componentDidUpdate = () => {
+    if(this.queue) this.queue.focus();
+  }
+
+  componentWillReceiveProps = (next, prev) => {
+    if(next.queue !== this.state.data) {
+      this.setState({data: next.queue});
+    }
   }
 
   componentWillMount = () => {
@@ -24,22 +33,7 @@ class Queue extends Component {
       //Change tab to top
       this.setState({listType: 'vertical'});
     }
-    this.getList();
-  }
-
-  //TODO: function needs to run whenever an update is discovered
-  getList = () => {
-    this.setState({loading: true});
-    db.collection('rooms').doc('ABC').collection('queue').orderBy("timestamp", "desc").get().then(snap => {
-      let temp = [];
-      snap.forEach(doc => {
-        let newDoc = doc.data();
-        newDoc.fbid = doc.id;
-        newDoc.isLoading = false;
-        temp.push(newDoc);
-      })
-      this.setState({data: temp, loading: false});
-    })
+    //this.getList();
   }
 
   renderList = (data) => {
@@ -50,20 +44,18 @@ class Queue extends Component {
       if(index >= min && index <= max - 1) {
         let diff = moment(el.timestamp).fromNow();
         let duration = this.formatDuration(el.duration);
-        return <List.Item key={`listitem-${index}`}
+        return <List.Item key={`listitem-${el.fbid}`}
            actions={[<Popconfirm title="Remove song?" onConfirm={(e) => this.handleDelete(el.fbid, index)}><Button loading={el.isLoading}>{!el.isLoading && <Icon type="delete"/>}</Button></Popconfirm>]}
-           extra={this.state.listType === 'vertical' ? <Lazy offsetVertical={1000} className="queue-image" debounce={false} throttle={500}>
-             <ProgressiveImage preview={el.song.thumbnails.medium.url} src={el.song.thumbnails.medium.url} render={(src, style) => <Img className="responsive-img" style={style} src={src} alt={`avatar`}/>}/></Lazy> : null}>
+           extra={this.state.listType === 'vertical' ? <LazyLoad height={'100%'} overflow={true}><Img className="queue-image" src={el.thumbnails.medium.url} alt={`${el.videoId}-thumbnail`}/></LazyLoad> : null}>
           <List.Item.Meta
-            avatar={this.state.listType === 'horizontal' ? <Lazy offsetVertical={1000} className="queue-image" debounce={false} throttle={500}>
-              <ProgressiveImage preview={el.song.thumbnails.medium.url} src={el.song.thumbnails.medium.url} render={(src, style) => <Img className="responsive-img" style={style} src={src} alt={`avatar`}/>}/></Lazy> : null}
-            title={el.song.title}
+            avatar={this.state.listType === 'horizontal' ? <LazyLoad height={'100%'} overflow={true}><Img className="queue-image" src={el.thumbnails.medium.url} alt={`${el.videoId}-thumbnail`}/></LazyLoad> : null}
+            title={<span className="truncate">{el.title}</span>}
             description={`${duration} | ${diff}`}
           />
           <p>Added by [insert name of adder here]</p>
         </List.Item>
       } else {
-        return;
+        return null;
       }
     })
   }
@@ -73,7 +65,7 @@ class Queue extends Component {
     temp[index].isLoading = true;
     this.setState({data: temp});
     db.collection('rooms').doc('ABC').collection('queue').doc(id).delete().then(() => {
-      this.getList();
+      //this.getList();
     }).catch(err => {
       console.log(err);
     })
@@ -92,18 +84,21 @@ class Queue extends Component {
       hideOnSinglePage: true,
       total: this.state.data ? this.state.data.length : 0,
       showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
-      onChange: ((page) => this.setState({page})),
+      onChange: (page) => this.setState({page}),
     };
     let list;
     if(this.state.data && this.state.data.length > 0) list = this.renderList(this.state.data);
     return (
       <div>
-        <Row style={{marginTop: 10, maxHeight: '65vh', overflow: 'auto', padding: 8}}>
-          {list &&
+        {list &&
+        <Row>
           <Col span={24} className="right-align">
             <Pagination {...pagination}/>
           </Col>
-          }
+        </Row>
+        }
+        <Row style={{marginTop: 10, maxHeight: '65vh', overflow: 'auto', padding: 8}}>
+          <span ref={q => {this.queue = q}}></span>
           {list &&
           <Col span={24}>
             <List itemLayout={this.state.listType}>

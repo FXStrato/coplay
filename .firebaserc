@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "coplay-2"
+    "default": "coplay-2",
+    "coplay2": "coplay-2"
   }
 }
