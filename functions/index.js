@@ -18,3 +18,8 @@ exports.handleSkip = functions.https.onCall((data, context) => {
     return err;
   });
 });
+
+exports.handlePlay = functions.firestore.document('rooms/{roomId}').onUpdate((change, context) => {
+  const next = change.after.data();
+  const prev = change.before.data();
+})

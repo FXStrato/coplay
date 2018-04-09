@@ -38,20 +38,11 @@ class Room extends Component {
     tabPosition: 'left',
     tabSize: 'large',
     queueSize: 0,
-    queue: null,
-    queuefirst: null,
   }
 
-  componentDidMount = () => {
-    this.queueRef = db.collection("rooms").doc("ABC").collection("queue").orderBy("timestamp", "asc").onSnapshot(snap => {
-      let temp = [];
-      snap.forEach(doc => {
-        let newDoc = doc.data();
-        newDoc.fbid = doc.id;
-        newDoc.isLoading = false;
-        temp.push(newDoc);
-      })
-      this.setState({queueSize: snap.size, queue: temp, queuefirst: temp[0] || null});
+  componentWillMount = () => {
+    this.queueRef = db.collection("rooms").doc("ABC").collection("queue").onSnapshot(snap => {
+      this.setState({queueSize: snap.size});
     })
     if(window.innerWidth <= 768) {
       //Change tab to top
@@ -74,9 +65,9 @@ class Room extends Component {
           <Col sm={24} md={24} lg={24} xl={18}>
             <Card style={{width: '100%'}}>
               <Tabs defaultActiveKey="1" tabPosition={this.state.tabPosition} size={this.state.tabSize}>
-                <TabPane tab={<span>Now Playing</span>} key="1"><Current queuefirst={this.state.queuefirst}/></TabPane>
+                <TabPane tab={<span>Now Playing</span>} key="1"><Current/></TabPane>
                 <TabPane tab={<span>Search</span>} key="2"><Search/></TabPane>
-                <TabPane tab={<span>Queue {this.state.queueSize > 0 && <Badge count={this.state.queueSize} style={{ backgroundColor: '#03a09e' }}/>}</span>} key="3"><Queue queue={this.state.queue}/></TabPane>
+                <TabPane tab={<span>Queue {this.state.queueSize > 0 && <Badge count={this.state.queueSize} style={{ backgroundColor: '#03a09e' }}/>}</span>} key="3"><Queue/></TabPane>
                 <TabPane tab={<span>History</span>} key="4"><History/></TabPane>
                 <TabPane tab={<span>Playlists</span>} key="5"><Playlists/></TabPane>
               </Tabs>

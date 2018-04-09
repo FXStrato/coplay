@@ -10,8 +10,9 @@ const db = firebase.firestore();
 class Queue extends Component {
 
   state = {
-    data: this.props.queue,
+    data: null,
     loading: false,
+    listLoading: false,
     page: 1,
     pageSize: 5,
     total: null,
@@ -22,18 +23,27 @@ class Queue extends Component {
     if(this.queue) this.queue.focus();
   }
 
-  componentWillReceiveProps = (next, prev) => {
-    if(next.queue !== this.state.data) {
-      this.setState({data: next.queue});
-    }
-  }
-
   componentWillMount = () => {
+    this.setState({loading: true});
+    this.queueRef = db.collection("rooms").doc("ABC").collection("queue").orderBy("timestamp", "asc").onSnapshot(snap => {
+      let temp = [];
+      snap.forEach(doc => {
+        let newDoc = doc.data();
+        newDoc.fbid = doc.id;
+        newDoc.isLoading = false;
+        temp.push(newDoc);
+      })
+      this.setState({data: temp, loading: false});
+    })
     if(window.innerWidth <= 768) {
       //Change tab to top
       this.setState({listType: 'vertical'});
     }
     //this.getList();
+  }
+
+  componentWillUnmount = () => {
+    this.queueRef();
   }
 
   renderList = (data) => {
@@ -45,10 +55,10 @@ class Queue extends Component {
         let diff = moment(el.timestamp).fromNow();
         let duration = this.formatDuration(el.duration);
         return <List.Item key={`listitem-${el.fbid}`}
-           actions={[<Popconfirm title="Remove song?" onConfirm={(e) => this.handleDelete(el.fbid, index)}><Button loading={el.isLoading}>{!el.isLoading && <Icon type="delete"/>}</Button></Popconfirm>]}
+           actions={[<Popconfirm title="Remove from queue?" onConfirm={(e) => this.handleDelete(el.fbid, index)}><Button loading={el.isLoading}>{!el.isLoading && <Icon type="delete"/>}</Button></Popconfirm>]}
            extra={this.state.listType === 'vertical' ? <LazyLoad height={'100%'} overflow={true}><Img className="queue-image" src={el.thumbnails.medium.url} alt={`${el.videoId}-thumbnail`}/></LazyLoad> : null}>
           <List.Item.Meta
-            avatar={this.state.listType === 'horizontal' ? <LazyLoad height={'100%'} overflow={true}><Img className="queue-image" src={el.thumbnails.medium.url} alt={`${el.videoId}-thumbnail`}/></LazyLoad> : null}
+            avatar={this.state.listType === 'horizontal' ? <LazyLoad height={'100%'} overflow={true}><Img className="queue-image shadow" src={el.thumbnails.medium.url} alt={`${el.videoId}-thumbnail`}/></LazyLoad> : null}
             title={<span className="truncate">{el.title}</span>}
             description={`${duration} | ${diff}`}
           />
@@ -67,6 +77,19 @@ class Queue extends Component {
     db.collection('rooms').doc('ABC').collection('queue').doc(id).delete().then(() => {
       //this.getList();
     }).catch(err => {
+      console.log(err);
+    })
+  }
+
+  handleMassDelete = () => {
+    this.setState({listLoading: true});
+    db.collection('rooms').doc('ABC').collection('queue').get().then(snap => {
+      snap.forEach(doc => {
+        db.collection('rooms').doc('ABC').collection('queue').doc(doc.id).delete();
+      })
+      this.setState({listLoading: false});
+    }).catch(err => {
+      this.setState({listLoading: false});
       console.log(err);
     })
   }
@@ -92,8 +115,9 @@ class Queue extends Component {
       <div>
         {list &&
         <Row>
-          <Col span={24} className="right-align">
-            <Pagination {...pagination}/>
+          <Col xs={24} sm={24} md={12} lg={12}><Pagination {...pagination}/></Col>
+          <Col xs={24} sm={24} md={12} lg={12} align="right">
+            <Popconfirm title="Delete all items in queue?" onConfirm={this.handleMassDelete}><Button>Delete All</Button></Popconfirm>
           </Col>
         </Row>
         }
@@ -101,12 +125,12 @@ class Queue extends Component {
           <span ref={q => {this.queue = q}}></span>
           {list &&
           <Col span={24}>
-            <List itemLayout={this.state.listType}>
+            <List loading={this.state.listLoading} itemLayout={this.state.listType}>
               {list}
             </List>
           </Col>
           }
-          {!list && !this.state.loading ?
+          {!list && !this.state.loading && !this.state.listLoading ?
           <Col span={24} className="center">
             <p>To add to the queue, search up songs from the Search tab</p>
           </Col>

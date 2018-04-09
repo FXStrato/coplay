@@ -1,12 +1,11 @@
 import React, { Component } from 'react';
 import { Row, Col, Icon, Button, Progress, Card, Spin, Slider, Divider } from 'antd';
-import Img from 'react-image';
 import ReactPlayer from 'react-player';
+import Img from 'react-image';
 import firebase from 'firebase';
 import moment from 'moment';
 import 'moment-duration-format';
 const db = firebase.firestore();
-const functions = firebase.functions();
 const playerSettings = {
   youtube: {
     playerVars: {
@@ -30,41 +29,93 @@ class Current extends Component {
     loaded: null,
     volume: 0.5,
     muted: false,
+    initialSeek: false,
     playerHeight: 300,
-    np: null // now playing object
+    next: null,
+    np: {} // now playing object
   }
 
   componentWillMount = () => {
-    db.collection('rooms').doc('ABC').onSnapshot(doc => {
-      if(!doc.data().np) this.setState({playerLoading: false});
-      else {
-        this.setState({np: doc.data().np, playerLoading: false});
+    this.queueRef = db.collection("rooms").doc("ABC").collection("queue").orderBy('timestamp', 'asc').onSnapshot(snap => {
+      if (snap.docs.length > 0) {
+        this.setState({ next: snap.docs[0].data(), loading: false });
+      } else {
+        this.setState({ next: null });
       }
     })
-    if(window.innerWidth <= 768) {
+    this.npRef = db.collection('rooms').doc('ABC').collection('np').doc('np').onSnapshot(doc => {
+      if (doc.exists) {
+        this.setState({ np: doc.data(), played: doc.data().seek || 0, playerLoading: false });
+      } else this.setState({ playerLoading: false });
+    })
+    if (window.innerWidth <= 768) {
       //Change tab to top
-      this.setState({playerHeight: 200});
+      this.setState({ playerHeight: 200 });
     }
   }
 
+  componentWillUnmount = () => {
+    this.queueRef();
+    this.npRef();
+  }
+
   handleSlider = volume => {
-    this.setState({volume});
+    this.setState({ volume });
+  }
+
+  handleReady = () => {
+    this.setState({ playerLoading: false, played: this.state.np.seek, playing: this.state.np.playing });
+  }
+
+  handlePlay = () => {
+    if(this.player && this.state.np.seek > 0 && !this.state.initialSeek) this.player.seekTo(this.state.np.seek);
+    let temp = this.state.np;
+    temp.playing = true;
+    temp.seek = this.state.played;
+    db.collection('rooms').doc('ABC').collection('np').doc('np').update(temp);
+    this.setState({ playing: true, initialSeek: true });
+  }
+
+  handlePause = () => {
+    let temp = this.state.np;
+    temp.playing = false;
+    temp.seek = this.state.played;
+    db.collection('rooms').doc('ABC').collection('np').doc('np').update(temp);
+    this.setState({ playing: false });
+  }
+
+  handleProgress = (prog) => {
+    if(this.state.playing) this.setState(prog);
   }
 
   // replace currently playing with the first item in queue
   handleSkip = () => {
-    let overwrite = this.props.queuefirst;
-    if(overwrite) overwrite.playing = this.state.playing;
-    this.setState({playing: false, playerLoading: true, duration: null});
-    let skip = functions.httpsCallable('handleSkip');
-    skip({room: 'ABC', np: this.props.queuefirst}).then(res => {
-      // If skip occured, remove first item from queue if there is anything in queue
-      if(this.props.queuefirst) db.collection('rooms').doc('ABC').collection('queue').doc(this.props.queuefirst.fbid).delete();
-      this.setState({playerLoading: false});
-    }).catch(err => {
-      this.setState({playerLoading: false});
-      console.log(err);
-    });
+    let np = this.state.np;
+    let currentPlaying = this.state.playing;
+    this.setState({ playing: false, playerLoading: true, duration: null, played: 0 });
+    db.collection('rooms').doc('ABC').collection('queue').orderBy('timestamp', 'asc').limit(1).get().then(snap => {
+      if (snap.docs.length > 0) {
+        let temp = snap.docs[0].data();
+        temp.playing = currentPlaying;
+        temp.seek = 0;
+        db.collection('rooms').doc('ABC').collection('np').doc('np').set(temp).then(res => {
+          db.collection('rooms').doc('ABC').collection('queue').doc(snap.docs[0].id).delete().then(res => {
+            this.setState({ playerLoading: false });
+          }).catch(err => {
+            this.setState({ playerLoading: false });
+            console.log(err);
+          });
+        }).catch(err => {
+          this.setState({ playerLoading: false });
+          console.log(err);
+        });
+      } else {
+        db.collection('rooms').doc('ABC').collection('np').doc('np').set({}).then(res => {
+          this.setState({ playerLoading: false });
+        });
+      }
+      db.collection('rooms').doc('ABC').collection('history').add(np);
+    })
   }
 
   format = (seconds) => {
@@ -96,15 +147,18 @@ class Current extends Component {
               <Card bordered={false} style={{marginTop: -15}}>
                 <Row>
                   <Col sm={24}>
-                    {this.state.np ?
+                    {Object.keys(this.state.np).length > 0 ?
                     <ReactPlayer
                       url={this.state.np.url}
                       ref={q => {this.player = q}}
                       style={{pointerEvents: 'none'}}
                       config={playerSettings}
-                      onReady={() => this.setState({playerLoading: false})}
+                      onReady={this.handleReady}
                       onDuration={(duration) => this.setState({duration})}
-                      onProgress={(prog) => this.setState(prog)}
+                      onProgress={this.handleProgress}
+                      onPlay={this.handlePlay}
+                      onPause={this.handlePause}
+                      onEnded={this.handleSkip}
                       onError={e => console.log('onError', e)}
                       volume={this.state.volume}
                       muted={this.state.muted}
@@ -116,7 +170,7 @@ class Current extends Component {
                     }
                   </Col>
                   <Col sm={24} className="center">
-                    <Progress percent={this.state.played * 100 || 0} size="small" showInfo={false} />
+                    <Progress percent={this.state.played * 100} size="small" showInfo={false} />
                   </Col>
                 </Row>
                 <Row style={{marginBottom: 0}}>
@@ -141,12 +195,12 @@ class Current extends Component {
                     <Slider min={0} max={1} step={0.01} tipFormatter={null} defaultValue={this.state.volume} onChange={this.handleSlider} style={{width: '100%', display: 'inline-block', verticalAlign: 'middle', marginLeft: -5}} />
                   </Col>
                   <Col xs={12} sm={12} md={4} className="center">
-                    <Button onClick={() => this.setState({playing: !this.state.playing})} style={{border: 'none'}} type="secondary" ghost={false}>
+                    <Button disabled={Object.keys(this.state.np).length > 0 || this.state.playerLoading ? false : true} onClick={() => this.setState({playing: !this.state.playing})} style={{border: 'none'}} type="secondary" ghost={false}>
                       {this.state.playing ? <Icon type="pause"/> : <Icon type="caret-right"/>}
                     </Button>
                   </Col>
                   <Col xs={12} sm={12} md={4} className="center">
-                    <Button disabled={this.state.np || this.props.queuefirst ? false: true} onClick={this.handleSkip} style={{border: 'none'}} type="secondary" ghost={false}>
+                    <Button disabled={Object.keys(this.state.np).length > 0 || this.state.next || this.state.playerLoading ? false : true} onClick={this.handleSkip} style={{border: 'none'}} type="secondary" ghost={false}>
                       <Icon type="step-forward"/>
                     </Button>
                   </Col>
@@ -155,7 +209,7 @@ class Current extends Component {
             </Spin>
           </Col>
           <Col sm={24} md={24} lg={10}>
-            {this.state.np &&
+            {Object.keys(this.state.np).length > 0 &&
             <Row type="flex" align="middle" justify="center" style={{marginTop: 15}}>
               <Col xs={24} className="center"><h3>Currently Playing</h3></Col>
               <Col xs={24} className="center">
@@ -165,15 +219,15 @@ class Current extends Component {
               <Divider/>
             </Row>
             }
-            {this.props.queuefirst &&
-            <Row type="flex" align="middle" justify="center" gutter={16}>
+            {this.state.next &&
+            <Row type="flex" justify="center" align="middle" gutter={16}>
               <Col xs={24} className="center"><h3>Next In Queue</h3></Col>
-              <Col xs={24} sm={24} md={12} lg={6}>
-                <Img className="responsive-img" src={this.props.queuefirst.thumbnails.medium.url} alt={`${this.props.queuefirst.videoId}-thumbnail`}/>
+              <Col xs={24} sm={24} md={8} lg={4}>
+                <Img className="responsive-img" src={this.state.next.thumbnails.medium.url}/>
               </Col>
-              <Col xs={24} sm={24} md={12} lg={12}>
-                <div className="truncate">{this.props.queuefirst.title}</div>
-                <div>{this.props.queuefirst.channelTitle} | {this.formatDuration(this.props.queuefirst.duration)}</div>
+              <Col xs={24} sm={24} md={14} lg={10}>
+                <div className="truncate">{this.state.next.title}</div>
+                <div>{this.state.next.channelTitle}</div>
               </Col>
             </Row>
             }

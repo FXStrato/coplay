@@ -4,7 +4,7 @@ import Loadable from 'react-loadable';
 import Img from 'react-image';
 import Loading from './Loading';
 import Logo from './img/logo.png';
-import { Row, Col, Menu, Layout, Dropdown, Button } from 'antd';
+import { Row, Col, Menu, Layout, Dropdown, Button, Modal } from 'antd';
 const { Header, Content, Footer } = Layout;
 const Home = Loadable({
   loader: () =>
@@ -21,6 +21,16 @@ const About = Loadable({
     import('./About'),
   loading: Loading
 })
+const Login = Loadable({
+  loader: () =>
+    import('./Login'),
+  loading: Loading
+})
+const Signup = Loadable({
+  loader: () =>
+    import('./Signup'),
+  loading: Login
+})
 const NotFound = Loadable({
   loader: () =>
     import('./NotFound'),
@@ -28,6 +38,15 @@ const NotFound = Loadable({
 })
 
 class App extends Component {
+
+  state = {
+    visible: false,
+    type: null,
+  }
+
+  openModal = (type) => {
+    this.setState({visible: true, type});
+  }
 
   highlightMenu = () => {
     switch (this.props.location.pathname) {
@@ -46,7 +65,6 @@ class App extends Component {
     let cPath = this.props.location.pathname;
     let defaultMenuKey = this.highlightMenu();
     const dropdownMenu = (<Menu selectedKeys={defaultMenuKey}>
-      <Menu.Divider/>
       <Menu.Item key="1">
         <Link style={{marginTop: 5, marginBottom: 5, width: 150}} to="/" replace={"/" === cPath}>Home</Link>
       </Menu.Item>
@@ -55,6 +73,13 @@ class App extends Component {
       </Menu.Item>
       <Menu.Item key="3">
         <Link style={{marginTop: 5, marginBottom: 5, width: 150}} to="/about" replace={"/" === cPath}>About</Link>
+      </Menu.Item>
+      <Menu.Divider/>
+      <Menu.Item style={{background: 'white'}}>
+        <Button style={{width: '100%'}} onClick={() => this.openModal("Login")}>Login</Button>
+      </Menu.Item>
+      <Menu.Item style={{background: 'white'}}>
+        <Button style={{width: '100%'}} type="primary" onClick={() => this.openModal("Signup")}>Sign up</Button>
       </Menu.Item>
     </Menu>);
     return (
@@ -72,7 +97,8 @@ class App extends Component {
               <Link to="/" replace={"/" === cPath}><Img className="responsive-img" src={Logo} alt="CoPlay Logo" unloader={<span>CoPlay</span>}/></Link>
             </div>
             <div className="right hide-on-med-and-down">
-              <Button type="secondary">Log In</Button>
+              <Button type="secondary" style={{marginRight: 10}} onClick={() => this.openModal('Login')}>Log In</Button>
+              <Button type="primary" onClick={() => this.openModal('Signup')}>Sign Up</Button>
               {/* <Avatar size="large" shape="square" src="" style={{marginTop: -10}}/> */}
             </div>
             <Menu mode="horizontal" className="hide-on-med-and-down" selectedKeys={defaultMenuKey} style={{
@@ -117,6 +143,20 @@ class App extends Component {
         CoPlay v.2.0 ©2018
       </Footer>
     </Layout>
+    <Modal
+      title={this.state.type}
+      wrapClassName="vertical-center-modal"
+      visible={this.state.visible}
+      footer={null}
+      onOk={() => this.setState({visible: false})}
+      onCancel={() => this.setState({visible: false})}
+    >
+      {this.state.type === "Login" ?
+      <Login/>
+      :
+      <Signup/>
+      }
+    </Modal>
   </div>
     );
   }

@@ -44,7 +44,7 @@ class Search extends Component {
   handleAdd = (index) => {
     let temp = this.state.data;
     temp.items[index].isLoading = true;
-    this.setState({data: temp});
+    this.setState({ data: temp });
     db.collection("rooms").doc("ABC").collection("queue").add({
       url: 'https://www.youtube.com/watch?v=' + temp.items[index].id.videoId + '&list=' + temp.items[index].id.videoId,
       title: temp.items[index].snippet.title,
@@ -57,19 +57,19 @@ class Search extends Component {
     }).then(ref => {
       temp.items[index].isLoading = false;
       temp.items[index].isAdded = true;
-      this.setState({data: temp});
+      this.setState({ data: temp });
       message.success(`${temp.items[index].snippet.title} added to queue`);
     }).catch(err => {
       temp.items[index].isLoading = false;
       temp.items[index].isAdded = false;
-      this.setState({data: temp});
+      this.setState({ data: temp });
       message.success(`${temp.items[index].snippet.title} unable to be added, check console for error`);
       console.log(err);
     });
   }
 
   handleSearch = (value) => {
-    this.setState({ value, loading: true});
+    this.setState({ value, loading: true });
     this.getResults(value, null).then(res => {
       if (!res.error) {
         this.setState({ data: res });
@@ -102,52 +102,54 @@ class Search extends Component {
   }
 
   handleScroll = e => {
-    const bottom = e.target.scrollHeight - e.target.scrollTop === e.target.clientHeight;
-    if (bottom && this.state.loadedNumber <= 4 && !this.state.resultsLoad) {
-      let temp = this.state.loadedNumber;
-      temp++;
-      this.setState({ resultsLoad: true, loadedNumber: temp });
-      this.getResults(this.state.value, this.state.data.nextPageToken).then(res => {
-        if (!res.error) {
-          let temp = this.state.data;
-          temp.nextPageToken = res.nextPageToken;
-          temp.items = temp.items.concat(res.items);
-          this.setState({ data: temp });
-          this.getDurations(res).then(res => {
-            let temp = this.state.durations;
+    if (this.state.data) {
+      const bottom = e.target.scrollHeight - e.target.scrollTop === e.target.clientHeight;
+      if (bottom && this.state.loadedNumber <= 4 && !this.state.resultsLoad) {
+        let temp = this.state.loadedNumber;
+        temp++;
+        this.setState({ resultsLoad: true, loadedNumber: temp });
+        this.getResults(this.state.value, this.state.data.nextPageToken).then(res => {
+          if (!res.error) {
+            let temp = this.state.data;
+            temp.nextPageToken = res.nextPageToken;
             temp.items = temp.items.concat(res.items);
-            if (!res.error) {
-              let newData = this.state.data;
-              newData.items = newData.items.map((el) => {
-                let elem = el;
-                elem.isLoading = false;
-                return elem;
-              });
-              this.setState({ durations: temp, resultsLoad: false, data: newData });
-              this.renderList(newData, temp);
-            } else {
-              console.log(res);
-              message.error(res.error.message);
-            }
-          }).catch(err => {
-            console.log(err);
-            //message.error(err);
-          });
-        } else {
-          console.log(res);
-          message.error(res.error.message);
-        }
-      }).catch(err => {
-        console.log(err);
-        //message.error(err);
-      });
+            this.setState({ data: temp });
+            this.getDurations(res).then(res => {
+              let temp = this.state.durations;
+              temp.items = temp.items.concat(res.items);
+              if (!res.error) {
+                let newData = this.state.data;
+                newData.items = newData.items.map((el) => {
+                  let elem = el;
+                  elem.isLoading = false;
+                  return elem;
+                });
+                this.setState({ durations: temp, resultsLoad: false, data: newData });
+                this.renderList(newData, temp);
+              } else {
+                console.log(res);
+                message.error(res.error.message);
+              }
+            }).catch(err => {
+              console.log(err);
+              //message.error(err);
+            });
+          } else {
+            console.log(res);
+            message.error(res.error.message);
+          }
+        }).catch(err => {
+          console.log(err);
+          //message.error(err);
+        });
+      }
     }
   }
 
   //Returns search results, need to get duration separately
   async getResults(value, token) {
     try {
-      if(!token) this.setState({ loading: true, data: null, durations: null, list: [] });
+      if (!token) this.setState({ loading: true, data: null, durations: null, list: [] });
       let url = "https://www.googleapis.com/youtube/v3/search/";
       url += "?key=" + process.env.REACT_APP_YOUTUBEAPIKEY;
       url += "&part=snippet,id";
@@ -195,7 +197,7 @@ class Search extends Component {
   render() {
 
     let list;
-    if(this.state.data && this.state.durations) list = this.renderList(this.state.data, this.state.durations);
+    if (this.state.data && this.state.durations) list = this.renderList(this.state.data, this.state.durations);
 
     return (
       <div>
