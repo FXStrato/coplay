@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import { Route, Switch, withRouter, Link } from 'react-router-dom';
 import Loadable from 'react-loadable';
 import Img from 'react-image';
+import firebase from 'firebase';
 import Loading from './Loading';
 import Logo from './img/logo.png';
 import { Row, Col, Menu, Layout, Dropdown, Button, Modal } from 'antd';
@@ -31,6 +32,11 @@ const Signup = Loadable({
     import('./Signup'),
   loading: Login
 })
+const Profile = Loadable({
+  loader: () =>
+    import('./Profile'),
+  loading: Loading
+})
 const NotFound = Loadable({
   loader: () =>
     import('./NotFound'),
@@ -42,10 +48,40 @@ class App extends Component {
   state = {
     visible: false,
     type: null,
+    user: null,
+  }
+
+  componentWillMount = () => {
+    this.authRef = firebase.auth().onAuthStateChanged((user) => {
+      if (user) {
+        // User is signed in.
+        this.setState({user});
+        console.log('logged user', user);
+      } else {
+        // User is signed out.
+      }
+    });
+  }
+
+  componentWillUnmount = () => {
+    this.authRef();
   }
 
   openModal = (type) => {
     this.setState({visible: true, type});
+  }
+
+  handleSignout = () => {
+    if(this.state.user) {
+      firebase.auth().signOut().then(() => {
+        window.location.reload();
+        // Sign-out successful.
+      }).catch((error) => {
+        // An error happened.
+        console.log(error);
+      });
+    }
+    window.location.reload();
   }
 
   highlightMenu = () => {
@@ -99,6 +135,7 @@ class App extends Component {
             <div className="right hide-on-med-and-down">
               <Button type="secondary" style={{marginRight: 10}} onClick={() => this.openModal('Login')}>Log In</Button>
               <Button type="primary" onClick={() => this.openModal('Signup')}>Sign Up</Button>
+              <Button type="primary" onClick={this.handleSignout}>Sign Out</Button>
               {/* <Avatar size="large" shape="square" src="" style={{marginTop: -10}}/> */}
             </div>
             <Menu mode="horizontal" className="hide-on-med-and-down" selectedKeys={defaultMenuKey} style={{
@@ -134,6 +171,7 @@ class App extends Component {
           <Switch>
             <Route exact={true} path="/" component={Home}/>
             <Route exact={true} path="/room" component={Room}/>
+            <Route exact={true} path="/profile" component={Profile}/>
             <Route exact={true} path="/about" component={About}/>
             <Route component={NotFound}/>
           </Switch>

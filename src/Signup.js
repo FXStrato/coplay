@@ -1,10 +1,14 @@
 import React, { Component } from 'react';
-import { Row, Col, Form, Button, Icon, Tooltip, Input } from 'antd';
+import firebase from 'firebase';
+import { Row, Col, Form, Button, Icon, Tooltip, Input, Alert } from 'antd';
 const FormItem = Form.Item;
+const db = firebase.firestore();
 
 class Signup extends Component {
 
   state = {
+    loading: false,
+    error: null,
     confirmDirty: false,
   }
 
@@ -13,6 +17,27 @@ class Signup extends Component {
     this.props.form.validateFieldsAndScroll((err, values) => {
       if (!err) {
         console.log('Received values of form: ', values);
+        this.setState({loading: true, error: null});
+        //Handling signin and addition to user collection
+        firebase.auth().createUserWithEmailAndPassword(values.email, values.password).then(user => {
+          console.log(user);
+          //TODO: Add to user collection
+          this.setState({loading: false});
+        }).catch((error) => {
+          // Handle Errors here.
+          let temp = {
+            code: error.code,
+            message: error.message,
+          }
+          this.setState({error: temp, loading: false});
+          // ...
+        });
+      } else {
+        let clear = true;
+        for(let key in values) {
+          if(values[key] !== undefined && values[key] !== "") clear = false;
+        }
+        if(clear) this.props.form.resetFields();
       }
     });
   }
@@ -40,11 +65,17 @@ class Signup extends Component {
   }
 
   validateNickname = (rule, value, callback) => {
-    const form = this.props.form;
-    setTimeout(() => {
-      form.setFields({nickname: {value, errors: [new Error('Test error')]}});
-      callback();
-    }, 1000);
+    //const form = this.props.form;
+    if(value) {
+      db.collection('nicknames').doc(value.trim()).get().then(doc => {
+        if(doc.exists) {
+          //form.setFields({nickname: {value}});
+          callback('Nickname already exists');
+        } else {
+          callback();
+        }
+      })
+    } else callback();
   }
 
   render() {
@@ -63,7 +94,10 @@ class Signup extends Component {
       <div>
         <Row>
           <Col span={24}>
-            <Form onSubmit={this.handleSubmit}>
+            {this.state.error &&
+            <Alert message={this.state.error.code} description={this.state.error.message} closable={true} type="error"/>
+            }
+            <Form onSubmit={this.handleSubmit} hideRequiredMark={true}>
              <FormItem
                {...formItemLayout}
                label="E-mail"
@@ -84,7 +118,7 @@ class Signup extends Component {
              >
                {getFieldDecorator('password', {
                  rules: [{
-                   required: true, message: 'Please input your password!',
+                   required: true, message: 'Password must be a minimum of 6 characters', min: 6,
                  }, {
                    validator: this.validateToNextPassword,
                  }],
@@ -111,23 +145,23 @@ class Signup extends Component {
                label={(
                  <span>
                    Display Name&nbsp;
-                   <Tooltip title="3-20 character length; numbers, letters and underscore are allowed">
+                   <Tooltip title="3-20 char length; numbers, letters and underscore are allowed, no spaces">
                      <Icon type="question-circle-o" />
                    </Tooltip>
                  </span>
                )}
              >
                {getFieldDecorator('nickname', {
-                 validateTrigger: 'onBlur',
-                 rules: [{ required: true, message: 'Please input a valid nickname', whitespace: true, min: 3, max: 20}, {
+                 validateTrigger: false,
+                 rules: [{ required: true, message: 'Invalid format, please check tooltip', pattern: /^[A-Za-z0-9_]+$/, whitespace: false, min: 3, max: 20}, {
                    validator: this.validateNickname,
                  }],
                })(
                  <Input />
                )}
              </FormItem>
-             <FormItem>
-               <Button style={{width: '100%'}} type="primary" htmlType="submit">Register</Button>
+             <FormItem style={{marginBottom: 5}}>
+               <Button loading={this.state.loading} style={{width: '100%'}} type="primary" htmlType="submit">Register</Button>
              </FormItem>
            </Form>
           </Col>
