@@ -1,27 +1,48 @@
 import React, { Component } from 'react';
-import { Row, Col } from 'antd';
+import { Row, Col, Tabs, Icon, Spin, Form, Upload, Button, Modal, message } from 'antd';
 import firebase from 'firebase';
-
+import Img from 'react-image';
+const TabPane = Tabs.TabPane;
+const FormItem = Form.Item;
+const db = firebase.firestore();
+const storage = firebase.storage();
 
 class Profile extends Component {
 
   state = {
     initialLoad: false,
     loading: false,
+    formloading: false,
+    preview: false,
+    previewImage: '',
     user: null,
+    dbUser: null,
+    pic: null,
   }
 
   componentWillMount = () => {
-    this.setState({loading: true});
+    this.setState({ loading: true });
     this.authRef = firebase.auth().onAuthStateChanged((user) => {
       if (user) {
         // User is signed in.
-        this.setState({user});
-        console.log('logged user', user);
+        db.collection('users').doc(user.uid).get().then(doc => {
+          if (doc.exists) {
+            let pic;
+            if (doc.data().pictureURL && doc.data().storageURL) {
+              pic = [{
+                uid: -1,
+                name: '',
+                status: 'done',
+                url: doc.data().storageURL
+              }]
+            }
+            this.setState({pic, user, dbUser: doc.data(), loading: false, initialLoad: true});
+          }
+        })
       } else {
         // User is signed out.
+        this.setState({ loading: false, initialLoad: true });
       }
-      this.setState({loading: false, initialLoad: true});
     });
   }
 
@@ -29,25 +50,168 @@ class Profile extends Component {
     this.authRef();
   }
 
+  //Handle profile change submission
+  handleSubmit = (e) => {
+    e.preventDefault();
+    this.setState({ formloading: true });
+    //Check first to see if removing or uploading pic
+    if(this.state.pic) {
+      let type = this.state.pic[0].name.split('.');
+      type = type[type.length - 1];
+      if (this.state.dbUser.pictureURL) {
+        //If picture already exists, remove old one and upload new
+        storage.ref().child(this.state.dbUser.pictureURL).delete().then(() => {
+          storage.ref().child(this.state.user.uid + '/profilepic' + type).put(this.state.pic[0].originFileObj).then(res => {
+            let temp = this.state.dbUser;
+            temp.storageURL = res.downloadURL;
+            temp.pictureURL = this.state.user.uid + '/profilepic' + type;
+            db.collection('users').doc(this.state.user.uid).update(temp).then(() => {
+              this.state.user.updateProfile({
+                photoURL: res.downloadURL
+              }).then(() => {
+                message.success('Successfully updated profile');
+                this.props.callback();
+                this.setState({ formloading: false });
+              })
+            });
+          }).catch(err => {
+            message.error('Error occured uploading new image');
+            console.log(err);
+            this.setState({ formloading: false });
+          })
+        }).catch(err => {
+          message.error('Error occured removing old picture from storage');
+          console.log(err);
+          this.setState({ formloading: false });
+        })
+      } else {
+        //if picture didnt' already exist, just upload new one
+        storage.ref().child(this.state.user.uid + '/profilepic' + type).put(this.state.pic[0].originFileObj).then(res => {
+          let temp = this.state.dbUser;
+          temp.storageURL = res.downloadURL;
+          temp.pictureURL = this.state.user.uid + '/profilepic' + type;
+          db.collection('users').doc(this.state.user.uid).update(temp).then(() => {
+            this.state.user.updateProfile({
+              photoURL: res.downloadURL
+            }).then(() => {
+              message.success('Successfully updated profile');
+              this.props.callback();
+              this.setState({ formloading: false });
+            })
+          });
+        }).catch(err => {
+          message.error('Error occured uploading new image');
+          console.log(err);
+          this.setState({ formloading: false });
+        })
+      }
+    } else {
+      //removing old profile picture
+      if(this.state.dbUser.pictureURL) {
+        //Situation of removing picture when there was one
+        storage.ref().child(this.state.dbUser.pictureURL).delete().then(() => {
+          let temp = this.state.dbUser;
+          temp.storageURL = "";
+          temp.pictureURL = "";
+          db.collection('users').doc(this.state.user.uid).update(temp).then(() => {
+            this.state.user.updateProfile({
+              photoURL: ""
+            }).then(() => {
+              message.success('Successfully updated profile');
+              this.props.callback();
+              this.setState({ formloading: false });
+            })
+          });
+        }).catch(err => {
+          message.error('Error occured removing old picture from storage');
+          console.log(err);
+          this.setState({ formloading: false });
+        })
+      } else {
+        //No picture to add, no picture to delete
+        this.setState({ formloading: false });
+      }
+    }
+  }
+
+  // Handles previewing of profile pic
+  handlePreview = file => {
+    this.setState({ preview: true, previewImage: file.url || file.thumbUrl })
+  }
+
+  //Modifies status of uploaded file to prevent red outline
+  handleChange = ({ fileList }) => {
+    if (fileList.length > 0) {
+      fileList[0].status = "done";
+      this.setState({ pic: fileList })
+    } else {
+      this.setState({ pic: null })
+    }
+  }
+
+
+  //TODO Add editing passwords
   render() {
+    //const { getFieldDecorator } = this.props.form;
+    const formItemLayout = {
+      labelCol: { span: 6 },
+      wrapperCol: { span: 14 },
+    };
     return (
-      <div>
+      <Spin className="center" spinning={this.state.loading} style={{width: '100%'}}>
         {this.state.initialLoad &&
         <Row>
-          {!this.state.loading && !this.state.user ?
+          {!this.state.user ?
           <Col span={24}>
             <h3>Login to view profile</h3>
           </Col>
           :
           <Col span={24}>
-            <h3>Profile</h3>
+            <Tabs defaultActiveKey="1">
+              <TabPane tab={<span><Icon type="user" />General</span>} key="1">
+                <Row>
+                  <Col xs={24} sm={24} md={18} lg={12} xl={6}>
+                    <Form onSubmit={this.handleSubmit}>
+                      <FormItem {...formItemLayout} label="Display Name">
+                        <div>{this.state.user.displayName}</div>
+                      </FormItem>
+                      <FormItem {...formItemLayout} label="Email">
+                        <div>{this.state.user.email}</div>
+                      </FormItem>
+                      <FormItem {...formItemLayout} label="Profile Picture" extra="Use equal dimensions for best results">
+                        <Upload name="profilepic" fileList={this.state.pic} accept="image/*" action="" onPreview={this.handlePreview} onChange={this.handleChange} listType="picture-card">
+                          {!this.state.pic &&
+                          <div>
+                            <Icon type="upload" /> <br/> Click to upload
+                          </div>
+                          }
+                        </Upload>
+                      </FormItem>
+                      <FormItem style={{marginBottom: 5}}>
+                        <Button loading={this.state.formloading} type="primary" htmlType="submit" style={{width: '100%'}}>Save Changes</Button>
+                      </FormItem>
+                    </Form>
+                    <Modal visible={this.state.preview} footer={null} onCancel={() => this.setState({preview: false})}>
+                      <Img alt="profile-preview" style={{ width: '100%' }} src={this.state.previewImage} />
+                    </Modal>
+                  </Col>
+                </Row>
+              </TabPane>
+              <TabPane tab={<span><Icon type="laptop" />Room Settings</span>} key="2">
+                <Row>
+                  <Col xs={24} sm={24} md={18} lg={12} xl={6}>
+                    Tab 2, Room settings
+                  </Col>
+                </Row>
+              </TabPane>
+            </Tabs>
           </Col>
           }
         </Row>
         }
-      </div>
+      </Spin>
     );
   }
 }
 
-export default Profile;
+export default Form.create()(Profile);

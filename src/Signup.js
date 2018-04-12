@@ -20,9 +20,25 @@ class Signup extends Component {
         this.setState({loading: true, error: null});
         //Handling signin and addition to user collection
         firebase.auth().createUserWithEmailAndPassword(values.email, values.password).then(user => {
-          console.log(user);
+          let temp = {};
+          temp.uid = user.uid;
+          temp.email = user.email;
+          temp.displayName = values.nickname;
+          temp.storageURL = "";
+          temp.createdAt = firebase.firestore.FieldValue.serverTimestamp();
           //TODO: Add to user collection
-          this.setState({loading: false});
+          user.updateProfile({
+            displayName: values.nickname,
+            photoURL: ""
+          }).then(() => {
+            db.collection('users').doc(user.uid).set(temp).then(() => {
+              db.collection('nicknames').doc(values.nickname).set({uid: user.uid, timestamp: firebase.firestore.FieldValue.serverTimestamp()}).then(() => {
+                this.setState({loading: false});
+                window.location.reload();
+              });
+            });
+          })
+
         }).catch((error) => {
           // Handle Errors here.
           let temp = {
@@ -50,7 +66,7 @@ class Signup extends Component {
   compareToFirstPassword = (rule, value, callback) => {
     const form = this.props.form;
     if (value && value !== form.getFieldValue('password')) {
-      callback('Two passwords that you enter is inconsistent!');
+      callback('Passwords do not match');
     } else {
       callback();
     }

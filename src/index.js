@@ -16,7 +16,7 @@ let config = {
   authDomain: "coplay-2.firebaseapp.com",
   databaseURL: "https://coplay-2.firebaseio.com",
   projectId: "coplay-2",
-  storageBucket: "",
+  storageBucket: "coplay-2.appspot.com",
   messagingSenderId: "1094451613126"
 };
 firebase.initializeApp(config);

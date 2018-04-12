@@ -5,7 +5,7 @@ import Img from 'react-image';
 import firebase from 'firebase';
 import Loading from './Loading';
 import Logo from './img/logo.png';
-import { Row, Col, Menu, Layout, Dropdown, Button, Modal } from 'antd';
+import { Row, Col, Menu, Layout, Dropdown, Button, Modal, Avatar } from 'antd';
 const { Header, Content, Footer } = Layout;
 const Home = Loadable({
   loader: () =>
@@ -46,6 +46,7 @@ const NotFound = Loadable({
 class App extends Component {
 
   state = {
+    initialLoad: false,
     visible: false,
     type: null,
     user: null,
@@ -55,12 +56,14 @@ class App extends Component {
     this.authRef = firebase.auth().onAuthStateChanged((user) => {
       if (user) {
         // User is signed in.
-        this.setState({user});
-        console.log('logged user', user);
+        this.setState({user, visible: false});
+        console.log('user is logged in');
       } else {
         // User is signed out.
       }
+      this.setState({initialLoad: true});
     });
+
   }
 
   componentWillUnmount = () => {
@@ -69,6 +72,18 @@ class App extends Component {
 
   openModal = (type) => {
     this.setState({visible: true, type});
+  }
+
+  profileCallback = (res) => {
+    if(res) {
+      this.setState({user: firebase.auth().currentUser});
+    }
+  }
+
+  handleLogMenu = (item) => {
+    if(item.key === "3") {
+      this.handleSignout();
+    }
   }
 
   handleSignout = () => {
@@ -100,6 +115,20 @@ class App extends Component {
   render() {
     let cPath = this.props.location.pathname;
     let defaultMenuKey = this.highlightMenu();
+    const logMenu = (
+      <Menu onClick={this.handleLogMenu}>
+        <Menu.Item key="0">
+          <Link style={{marginTop: 5, marginBottom: 5, width: 150}} to="/room" replace={"/room" === cPath}>My Room</Link>
+        </Menu.Item>
+        <Menu.Item key="1">
+          <Link style={{marginTop: 5, marginBottom: 5, width: 150}} to="/profile" replace={"/profile" === cPath}>Profile</Link>
+        </Menu.Item>
+        <Menu.Divider />
+        <Menu.Item key="3">
+          <a style={{marginTop: 5, marginBottom: 5, width: 150}}>Sign Out</a>
+        </Menu.Item>
+      </Menu>
+    )
     const dropdownMenu = (<Menu selectedKeys={defaultMenuKey}>
       <Menu.Item key="1">
         <Link style={{marginTop: 5, marginBottom: 5, width: 150}} to="/" replace={"/" === cPath}>Home</Link>
@@ -133,10 +162,22 @@ class App extends Component {
               <Link to="/" replace={"/" === cPath}><Img className="responsive-img" src={Logo} alt="CoPlay Logo" unloader={<span>CoPlay</span>}/></Link>
             </div>
             <div className="right hide-on-med-and-down">
-              <Button type="secondary" style={{marginRight: 10}} onClick={() => this.openModal('Login')}>Log In</Button>
-              <Button type="primary" onClick={() => this.openModal('Signup')}>Sign Up</Button>
-              <Button type="primary" onClick={this.handleSignout}>Sign Out</Button>
-              {/* <Avatar size="large" shape="square" src="" style={{marginTop: -10}}/> */}
+              {this.state.initialLoad &&
+              <div className="right hide-on-med-and-down">
+                {this.state.user ?
+                <Dropdown overlay={logMenu} trigger={['click']}>
+                  <a className="ant-dropdown-link">
+                    <Avatar size="large" shape="square" src={this.state.user.photoURL} icon={this.state.user.photoURL ? null : 'user'} style={{marginTop: -10}}/>
+                  </a>
+                </Dropdown>
+                :
+                <span>
+                  <Button type="secondary" style={{marginRight: 10}} onClick={() => this.openModal('Login')}>Log In</Button>
+                  <Button type="primary" onClick={() => this.openModal('Signup')}>Sign Up</Button>
+                </span>
+                }
+              </div>
+              }
             </div>
             <Menu mode="horizontal" className="hide-on-med-and-down" selectedKeys={defaultMenuKey} style={{
                 lineHeight: '62px',
@@ -171,7 +212,7 @@ class App extends Component {
           <Switch>
             <Route exact={true} path="/" component={Home}/>
             <Route exact={true} path="/room" component={Room}/>
-            <Route exact={true} path="/profile" component={Profile}/>
+            <Route exact={true} path="/profile" render={props => <Profile {...props} callback={this.profileCallback}/>}/>
             <Route exact={true} path="/about" component={About}/>
             <Route component={NotFound}/>
           </Switch>

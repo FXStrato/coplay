@@ -1,15 +1,26 @@
 import React, { Component } from 'react';
 import { Row, Col, Form, Icon, Input, Button } from 'antd';
+import firebase from 'firebase';
 const FormItem = Form.Item;
 
 
 class Login extends Component {
 
+  state = {
+    loading: false,
+    error: null,
+  }
+
   handleSubmit = (e) => {
     e.preventDefault();
+    this.setState({error: null, loading: true});
     this.props.form.validateFields((err, values) => {
       if (!err) {
         console.log('Received values of form: ', values);
+        firebase.auth().signInWithEmailAndPassword(values.email, values.password).catch((error) => {
+          // Handle Errors here.
+          this.setState({error, loading: false});
+        });
       }
     });
   }
@@ -22,10 +33,10 @@ class Login extends Component {
           <Col span={24}>
             <Form onSubmit={this.handleSubmit}>
               <FormItem>
-                {getFieldDecorator('userName', {
+                {getFieldDecorator('email', {
                   rules: [{ required: true, message: 'Please input your username!' }],
                 })(
-                  <Input prefix={<Icon type="user" style={{ color: 'rgba(0,0,0,.25)' }} />} placeholder="Username" />
+                  <Input type="email" prefix={<Icon type="mail" style={{ color: 'rgba(0,0,0,.25)' }} />} placeholder="Email" />
                 )}
               </FormItem>
               <FormItem style={{marginBottom: 5}}>
@@ -34,11 +45,9 @@ class Login extends Component {
                 })(
                   <Input prefix={<Icon type="lock" style={{ color: 'rgba(0,0,0,.25)' }} />} type="password" placeholder="Password" />
                 )}
-                <br/>
-                <a>Forgot password</a>
               </FormItem>
               <FormItem style={{marginBottom: 5}}>
-                <Button type="primary" htmlType="submit" style={{width: '100%'}}>Log in</Button>
+                <Button loading={this.state.loading} type="primary" htmlType="submit" style={{width: '100%'}}>Log in</Button>
               </FormItem>
             </Form>
           </Col>
