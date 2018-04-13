@@ -6205,8 +6205,8 @@ rc-rate@~2.4.0:
     rc-util "^4.3.0"
 
 rc-select@~7.7.0:
-  version "7.7.6"
-  resolved "https://registry.yarnpkg.com/rc-select/-/rc-select-7.7.6.tgz#d5acc0ac9505c8d633fb00165c6afbc1ecb8fbc3"
+  version "7.7.7"
+  resolved "https://registry.yarnpkg.com/rc-select/-/rc-select-7.7.7.tgz#c5b4249920e683146fe865655bf43582ded2c4ab"
   dependencies:
     babel-runtime "^6.23.0"
     classnames "2.x"
@@ -6249,8 +6249,8 @@ rc-switch@~1.6.0:
     prop-types "^15.5.6"
 
 rc-table@~6.1.0:
-  version "6.1.7"
-  resolved "https://registry.yarnpkg.com/rc-table/-/rc-table-6.1.7.tgz#02e33b2d2c3cffc5c6e05f62c0f61a8de0a1daf7"
+  version "6.1.9"
+  resolved "https://registry.yarnpkg.com/rc-table/-/rc-table-6.1.9.tgz#09bd002257469a8ec1b195f2ee7a654d73eb4335"
   dependencies:
     babel-runtime "6.x"
     component-classes "^1.2.6"
@@ -6258,6 +6258,7 @@ rc-table@~6.1.0:
     mini-store "^1.0.2"
     prop-types "^15.5.8"
     rc-util "^4.0.4"
+    react-lifecycles-compat "^3.0.2"
     shallowequal "^1.0.2"
     warning "^3.0.0"
 
@@ -6432,6 +6433,10 @@ react-lazy-load@^3.0.12:
 react-lazyload@^2.3.0:
   version "2.3.0"
   resolved "https://registry.yarnpkg.com/react-lazyload/-/react-lazyload-2.3.0.tgz#ccb134223012447074a96543954f44b055dc6185"
+
+react-lifecycles-compat@^3.0.2:
+  version "3.0.2"
+  resolved "https://registry.yarnpkg.com/react-lifecycles-compat/-/react-lifecycles-compat-3.0.2.tgz#7279047275bd727a912e25f734c0559527e84eff"
 
 react-loadable@^5.3.1:
   version "5.3.1"

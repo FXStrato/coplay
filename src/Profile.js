@@ -1,11 +1,18 @@
 import React, { Component } from 'react';
 import { Row, Col, Tabs, Icon, Spin, Form, Upload, Button, Modal, message } from 'antd';
 import firebase from 'firebase';
+import Loadable from 'react-loadable';
+import Loading from './Loading';
 import Img from 'react-image';
 const TabPane = Tabs.TabPane;
 const FormItem = Form.Item;
 const db = firebase.firestore();
 const storage = firebase.storage();
+const ChangePassword = Loadable({
+  loader: () =>
+    import('./Profile/ChangePassword'),
+  loading: Loading
+});
 
 class Profile extends Component {
 
@@ -15,6 +22,7 @@ class Profile extends Component {
     formloading: false,
     preview: false,
     previewImage: '',
+    change: false,
     user: null,
     dbUser: null,
     pic: null,
@@ -31,9 +39,10 @@ class Profile extends Component {
             if (doc.data().pictureURL && doc.data().storageURL) {
               pic = [{
                 uid: -1,
-                name: '',
+                name: 'profile.pic',
                 status: 'done',
-                url: doc.data().storageURL
+                url: doc.data().storageURL,
+                thumbUrl: doc.data().storageURL
               }]
             }
             this.setState({pic, user, dbUser: doc.data(), loading: false, initialLoad: true});
@@ -50,6 +59,12 @@ class Profile extends Component {
     this.authRef();
   }
 
+  handleCallback = () => {
+    //Callback from changepassword component, close the modal if it is open, display success
+    this.setState({change: false});
+    message.success('Successfully changed password');
+  }
+
   //Handle profile change submission
   handleSubmit = (e) => {
     e.preventDefault();
@@ -61,10 +76,10 @@ class Profile extends Component {
       if (this.state.dbUser.pictureURL) {
         //If picture already exists, remove old one and upload new
         storage.ref().child(this.state.dbUser.pictureURL).delete().then(() => {
-          storage.ref().child(this.state.user.uid + '/profilepic' + type).put(this.state.pic[0].originFileObj).then(res => {
+          storage.ref().child(this.state.user.uid + '/profilepic.' + type).put(this.state.pic[0]).then(res => {
             let temp = this.state.dbUser;
             temp.storageURL = res.downloadURL;
-            temp.pictureURL = this.state.user.uid + '/profilepic' + type;
+            temp.pictureURL = this.state.user.uid + '/profilepic.' + type;
             db.collection('users').doc(this.state.user.uid).update(temp).then(() => {
               this.state.user.updateProfile({
                 photoURL: res.downloadURL
@@ -80,16 +95,31 @@ class Profile extends Component {
             this.setState({ formloading: false });
           })
         }).catch(err => {
-          message.error('Error occured removing old picture from storage');
-          console.log(err);
-          this.setState({ formloading: false });
+          if(err.code.includes('object-not-found')) {
+            let temp = this.state.dbUser;
+            temp.storageURL = "";
+            temp.pictureURL = "";
+            db.collection('users').doc(this.state.user.uid).update(temp).then(() => {
+              this.state.user.updateProfile({
+                photoURL: ""
+              }).then(() => {
+                message.success('Successfully updated profile');
+                this.props.callback();
+                this.setState({ formloading: false });
+              })
+            });
+          } else {
+            message.error('Error occured removing old picture from storage');
+            console.log(err);
+            this.setState({ formloading: false });
+          }
         })
       } else {
         //if picture didnt' already exist, just upload new one
-        storage.ref().child(this.state.user.uid + '/profilepic' + type).put(this.state.pic[0].originFileObj).then(res => {
+        storage.ref().child(this.state.user.uid + '/profilepic.' + type).put(this.state.pic[0]).then(res => {
           let temp = this.state.dbUser;
           temp.storageURL = res.downloadURL;
-          temp.pictureURL = this.state.user.uid + '/profilepic' + type;
+          temp.pictureURL = this.state.user.uid + '/profilepic.' + type;
           db.collection('users').doc(this.state.user.uid).update(temp).then(() => {
             this.state.user.updateProfile({
               photoURL: res.downloadURL
@@ -123,9 +153,24 @@ class Profile extends Component {
             })
           });
         }).catch(err => {
-          message.error('Error occured removing old picture from storage');
-          console.log(err);
-          this.setState({ formloading: false });
+          if(err.code.includes('object-not-found')) {
+            let temp = this.state.dbUser;
+            temp.storageURL = "";
+            temp.pictureURL = "";
+            db.collection('users').doc(this.state.user.uid).update(temp).then(() => {
+              this.state.user.updateProfile({
+                photoURL: ""
+              }).then(() => {
+                message.success('Successfully updated profile');
+                this.props.callback();
+                this.setState({ formloading: false });
+              })
+            });
+          } else {
+            message.error('Error occured removing old picture from storage');
+            console.log(err);
+            this.setState({ formloading: false });
+          }
         })
       } else {
         //No picture to add, no picture to delete
@@ -141,6 +186,7 @@ class Profile extends Component {
 
   //Modifies status of uploaded file to prevent red outline
   handleChange = ({ fileList }) => {
+    console.log(fileList);
     if (fileList.length > 0) {
       fileList[0].status = "done";
       this.setState({ pic: fileList })
@@ -149,8 +195,6 @@ class Profile extends Component {
     }
   }
 
-
-  //TODO Add editing passwords
   render() {
     //const { getFieldDecorator } = this.props.form;
     const formItemLayout = {
@@ -172,14 +216,19 @@ class Profile extends Component {
                 <Row>
                   <Col xs={24} sm={24} md={18} lg={12} xl={6}>
                     <Form onSubmit={this.handleSubmit}>
-                      <FormItem {...formItemLayout} label="Display Name">
+                      <FormItem {...formItemLayout} label="Display Name" style={{marginBottom: 5}}>
                         <div>{this.state.user.displayName}</div>
                       </FormItem>
                       <FormItem {...formItemLayout} label="Email">
                         <div>{this.state.user.email}</div>
                       </FormItem>
                       <FormItem {...formItemLayout} label="Profile Picture" extra="Use equal dimensions for best results">
-                        <Upload name="profilepic" fileList={this.state.pic} accept="image/*" action="" onPreview={this.handlePreview} onChange={this.handleChange} listType="picture-card">
+                        <Upload name="profilepic" fileList={this.state.pic} accept="image/*" listType="picture-card"
+                        action=""
+                        onPreview={this.handlePreview}
+                        onChange={this.handleChange}
+                        beforeUpload={file => {return false}}
+                        >
                           {!this.state.pic &&
                           <div>
                             <Icon type="upload" /> <br/> Click to upload
@@ -187,12 +236,18 @@ class Profile extends Component {
                           }
                         </Upload>
                       </FormItem>
+                      <FormItem label="Account" {...formItemLayout}>
+                        <Button onClick={() => this.setState({change: true})}>Change Password</Button>
+                      </FormItem>
                       <FormItem style={{marginBottom: 5}}>
                         <Button loading={this.state.formloading} type="primary" htmlType="submit" style={{width: '100%'}}>Save Changes</Button>
                       </FormItem>
                     </Form>
                     <Modal visible={this.state.preview} footer={null} onCancel={() => this.setState({preview: false})}>
                       <Img alt="profile-preview" style={{ width: '100%' }} src={this.state.previewImage} />
+                    </Modal>
+                    <Modal title="Changing Password" visible={this.state.change} footer={null} onCancel={() => this.setState({change: false})}>
+                      <ChangePassword callback={this.handleCallback}/>
                     </Modal>
                   </Col>
                 </Row>

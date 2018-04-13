@@ -37,6 +37,11 @@ const Profile = Loadable({
     import('./Profile'),
   loading: Loading
 })
+const RoomLanding = Loadable({
+  loader: () =>
+    import('./RoomLanding'),
+  loading: Loading
+})
 const NotFound = Loadable({
   loader: () =>
     import('./NotFound'),
@@ -52,18 +57,29 @@ class App extends Component {
     user: null,
   }
 
+  //TODO: Upon disconnecting, also remove from any room if in one
   componentWillMount = () => {
     this.authRef = firebase.auth().onAuthStateChanged((user) => {
       if (user) {
         // User is signed in.
         this.setState({user, visible: false});
+        firebase.database().ref('.info/connected').on('value', snap => {
+          if(!snap.val()) {
+            //firebase.firestore().doc('/status/' + user.uid).set({state: 'offline', last_seen: firebase.firestore.FieldValue.serverTimestamp()});
+            firebase.firestore().collection('rooms').doc('ABC').collection('party').doc(user.uid).delete();
+            return;
+          }
+          firebase.database().ref('/status/' + user.uid).onDisconnect().set({state: 'offline', last_seen: firebase.database.ServerValue.TIMESTAMP}).then(() => {
+            //firebase.firestore().doc('/status/' + user.uid).set({state: 'online', last_seen: firebase.firestore.FieldValue.serverTimestamp()});
+            firebase.database().ref('/status/' + user.uid).set({state: 'online', last_seen: firebase.database.ServerValue.TIMESTAMP})
+          })
+        })
         console.log('user is logged in');
       } else {
         // User is signed out.
       }
       this.setState({initialLoad: true});
     });
-
   }
 
   componentWillUnmount = () => {
@@ -100,16 +116,11 @@ class App extends Component {
   }
 
   highlightMenu = () => {
-    switch (this.props.location.pathname) {
-    case '/':
-      return ['1'];
-    case '/room':
-      return ['2'];
-    case '/about':
-      return ['3'];
-    default:
-      return [];
-    }
+    let temp = this.props.location.pathname;
+    if (temp === '/') return ['1'];
+    else if (temp === '/room') return ['2'];
+    else if (temp === '/about') return ['3'];
+    else return [];
   }
 
   render() {
@@ -118,7 +129,7 @@ class App extends Component {
     const logMenu = (
       <Menu onClick={this.handleLogMenu}>
         <Menu.Item key="0">
-          <Link style={{marginTop: 5, marginBottom: 5, width: 150}} to="/room" replace={"/room" === cPath}>My Room</Link>
+          <Link style={{marginTop: 5, marginBottom: 5, width: 150}} to="/room/abc" replace={"/room" === cPath}>My Room</Link>
         </Menu.Item>
         <Menu.Item key="1">
           <Link style={{marginTop: 5, marginBottom: 5, width: 150}} to="/profile" replace={"/profile" === cPath}>Profile</Link>
@@ -159,7 +170,7 @@ class App extends Component {
                 marginRight: 20,
                 marginLeft: -10
               }}>
-              <Link to="/" replace={"/" === cPath}><Img className="responsive-img" src={Logo} alt="CoPlay Logo" unloader={<span>CoPlay</span>}/></Link>
+              <Link to="/" replace={"/" === cPath}><Img className="responsive-img animated fadeIn" src={Logo} alt="CoPlay Logo" loader={<span style={{width: 94, color: 'white'}}>CoPlay</span>}/></Link>
             </div>
             <div className="right hide-on-med-and-down">
               {this.state.initialLoad &&
@@ -211,7 +222,8 @@ class App extends Component {
           }}>
           <Switch>
             <Route exact={true} path="/" component={Home}/>
-            <Route exact={true} path="/room" component={Room}/>
+            <Route exact={true} path="/room" component={RoomLanding}/>
+            <Route exact={true} path="/room/:roomID" component={Room}/>
             <Route exact={true} path="/profile" render={props => <Profile {...props} callback={this.profileCallback}/>}/>
             <Route exact={true} path="/about" component={About}/>
             <Route component={NotFound}/>

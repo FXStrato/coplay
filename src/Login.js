@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Row, Col, Form, Icon, Input, Button } from 'antd';
+import { Row, Col, Form, Icon, Input, Button, Alert } from 'antd';
 import firebase from 'firebase';
 const FormItem = Form.Item;
 
@@ -16,7 +16,6 @@ class Login extends Component {
     this.setState({error: null, loading: true});
     this.props.form.validateFields((err, values) => {
       if (!err) {
-        console.log('Received values of form: ', values);
         firebase.auth().signInWithEmailAndPassword(values.email, values.password).catch((error) => {
           // Handle Errors here.
           this.setState({error, loading: false});
@@ -31,6 +30,9 @@ class Login extends Component {
       <div>
         <Row>
           <Col span={24}>
+            {this.state.error &&
+            <Alert style={{marginBottom: 10}} message={this.state.error.code} description={this.state.error.message} closable={true} type="error"/>
+            }
             <Form onSubmit={this.handleSubmit}>
               <FormItem>
                 {getFieldDecorator('email', {
