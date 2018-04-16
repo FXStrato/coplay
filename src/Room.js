@@ -52,9 +52,11 @@ class Room extends Component {
     queueSize: 0,
     participants: null,
     user: null,
+    roomID: this.props.match.params.roomID
   }
 
   componentWillMount = () => {
+    let roomID = this.props.match.params.roomID;
     this.authRef = firebase.auth().onAuthStateChanged((user) => {
       if (user) {
         this.setState({user});
@@ -63,7 +65,7 @@ class Room extends Component {
           photoURL: user.photoURL,
           timestamp: firebase.firestore.FieldValue.serverTimestamp()
         }
-        db.collection("rooms").doc("ABC").collection("participants").doc(user.uid).set(temp).then(() => {
+        db.collection("rooms").doc(roomID).collection("participants").doc(user.uid).set(temp).then(() => {
           this.setState({initialLoad: true});
         }).catch(err => {
           message.error('Error occured adding to party list');
@@ -74,11 +76,11 @@ class Room extends Component {
         this.setState({initialLoad: true});
       }
 
-      this.partyRef = db.collection("rooms").doc("ABC").collection("participants").onSnapshot(snap => {
+      this.partyRef = db.collection("rooms").doc(roomID).collection("participants").onSnapshot(snap => {
         this.setState({participants: snap});
       })
 
-      this.queueRef = db.collection("rooms").doc("ABC").collection("queue").onSnapshot(snap => {
+      this.queueRef = db.collection("rooms").doc(roomID).collection("queue").onSnapshot(snap => {
         this.setState({queueSize: snap.size});
       });
     });
@@ -90,7 +92,7 @@ class Room extends Component {
   }
 
   componentWillUnmount = () => {
-    if(this.state.user) db.collection("rooms").doc("ABC").collection("participants").doc(this.state.user.uid).delete();
+    if(this.state.user) db.collection("rooms").doc(this.state.roomID).collection("participants").doc(this.state.user.uid).delete();
     this.queueRef();
     this.partyRef();
   }

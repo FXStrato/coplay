@@ -55,6 +55,7 @@ class App extends Component {
     visible: false,
     type: null,
     user: null,
+    personal: null,
   }
 
   //TODO: Upon disconnecting, also remove from any room if in one
@@ -63,12 +64,16 @@ class App extends Component {
       if (user) {
         // User is signed in.
         this.setState({user, visible: false});
+        this.userRef = firebase.firestore().collection('users').doc(user.uid).onSnapshot(doc => {
+          this.setState({personal: doc.data()});
+        });
         firebase.database().ref('.info/connected').on('value', snap => {
           if(!snap.val()) {
             //firebase.firestore().doc('/status/' + user.uid).set({state: 'offline', last_seen: firebase.firestore.FieldValue.serverTimestamp()});
             firebase.firestore().collection('rooms').doc('ABC').collection('party').doc(user.uid).delete();
             return;
           }
+          //TODO: if disconnecting in a room, remove self from room party list
           firebase.database().ref('/status/' + user.uid).onDisconnect().set({state: 'offline', last_seen: firebase.database.ServerValue.TIMESTAMP}).then(() => {
             //firebase.firestore().doc('/status/' + user.uid).set({state: 'online', last_seen: firebase.firestore.FieldValue.serverTimestamp()});
             firebase.database().ref('/status/' + user.uid).set({state: 'online', last_seen: firebase.database.ServerValue.TIMESTAMP})
@@ -84,6 +89,7 @@ class App extends Component {
 
   componentWillUnmount = () => {
     this.authRef();
+    if(this.userRef) this.userRef();
   }
 
   openModal = (type) => {
@@ -94,6 +100,10 @@ class App extends Component {
     if(res) {
       this.setState({user: firebase.auth().currentUser});
     }
+  }
+
+  signUpCallback = (res) => {
+    this.setState({visible: true, type: 'Signup'});
   }
 
   handleLogMenu = (item) => {
@@ -118,21 +128,23 @@ class App extends Component {
   highlightMenu = () => {
     let temp = this.props.location.pathname;
     if (temp === '/') return ['1'];
-    else if (temp === '/room') return ['2'];
+    else if (temp === '/rooms') return ['2'];
     else if (temp === '/about') return ['3'];
     else return [];
   }
 
   render() {
-    let cPath = this.props.location.pathname;
     let defaultMenuKey = this.highlightMenu();
+    let roomMade;
+    if(this.state.personal && this.state.personal.roomMade) roomMade = "/room/" + this.state.user.displayName;
+    else roomMade = "/";
     const logMenu = (
       <Menu onClick={this.handleLogMenu}>
         <Menu.Item key="0">
-          <Link style={{marginTop: 5, marginBottom: 5, width: 150}} to="/room/abc" replace={"/room" === cPath}>My Room</Link>
+          <Link style={{marginTop: 5, marginBottom: 5, width: 150}} to={roomMade}>My Room</Link>
         </Menu.Item>
         <Menu.Item key="1">
-          <Link style={{marginTop: 5, marginBottom: 5, width: 150}} to="/profile" replace={"/profile" === cPath}>Profile</Link>
+          <Link style={{marginTop: 5, marginBottom: 5, width: 150}} to="/profile">Profile</Link>
         </Menu.Item>
         <Menu.Divider />
         <Menu.Item key="3">
@@ -142,13 +154,13 @@ class App extends Component {
     )
     const dropdownMenu = (<Menu selectedKeys={defaultMenuKey}>
       <Menu.Item key="1">
-        <Link style={{marginTop: 5, marginBottom: 5, width: 150}} to="/" replace={"/" === cPath}>Home</Link>
+        <Link style={{marginTop: 5, marginBottom: 5, width: 150}} to="/">Home</Link>
       </Menu.Item>
       <Menu.Item key="2">
-        <Link style={{marginTop: 5, marginBottom: 5}} to="/room" replace={"/room" === cPath}>Room</Link>
+        <Link style={{marginTop: 5, marginBottom: 5}} to="/rooms">Rooms</Link>
       </Menu.Item>
       <Menu.Item key="3">
-        <Link style={{marginTop: 5, marginBottom: 5, width: 150}} to="/about" replace={"/" === cPath}>About</Link>
+        <Link style={{marginTop: 5, marginBottom: 5, width: 150}} to="/about">About</Link>
       </Menu.Item>
       <Menu.Divider/>
       <Menu.Item style={{background: 'white'}}>
@@ -170,7 +182,7 @@ class App extends Component {
                 marginRight: 20,
                 marginLeft: -10
               }}>
-              <Link to="/" replace={"/" === cPath}><Img className="responsive-img animated fadeIn" src={Logo} alt="CoPlay Logo" loader={<span style={{width: 94, color: 'white'}}>CoPlay</span>}/></Link>
+              <Link to="/"><Img className="responsive-img animated fadeIn" src={Logo} alt="CoPlay Logo" loader={<span style={{width: 94, color: 'white'}}>CoPlay</span>}/></Link>
             </div>
             <div className="right hide-on-med-and-down">
               {this.state.initialLoad &&
@@ -195,10 +207,10 @@ class App extends Component {
                 borderBottom: 'none',
               }}>
               <Menu.Item key="2">
-                <Link to="/room" replace={"/room" === cPath}>Room</Link>
+                <Link to="/rooms">Rooms</Link>
               </Menu.Item>
               <Menu.Item key="3">
-                <Link to="/about" replace={"/" === cPath}>About</Link>
+                <Link to="/about">About</Link>
               </Menu.Item>
             </Menu>
           </Col>
@@ -221,8 +233,8 @@ class App extends Component {
             minHeight: 360
           }}>
           <Switch>
-            <Route exact={true} path="/" component={Home}/>
-            <Route exact={true} path="/room" component={RoomLanding}/>
+            <Route exact={true} path="/" render={props => <Home {...props} callback={this.signUpCallback}/>}/>
+            <Route exact={true} path="/rooms" component={RoomLanding}/>
             <Route exact={true} path="/room/:roomID" component={Room}/>
             <Route exact={true} path="/profile" render={props => <Profile {...props} callback={this.profileCallback}/>}/>
             <Route exact={true} path="/about" component={About}/>
