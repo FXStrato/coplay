@@ -42,6 +42,7 @@ class Search extends Component {
   }
 
   handleAdd = (index) => {
+    let user = firebase.auth().currentUser || null;
     let temp = this.state.data;
     temp.items[index].isLoading = true;
     this.setState({ data: temp });
@@ -53,7 +54,8 @@ class Search extends Component {
       channelTitle: temp.items[index].snippet.channelTitle,
       videoId: temp.items[index].id.videoId,
       duration: this.state.durations.items[index].contentDetails.duration,
-      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      adder: user ? user.displayName : 'Anon'
     }).then(ref => {
       temp.items[index].isLoading = false;
       temp.items[index].isAdded = true;

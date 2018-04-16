@@ -39,7 +39,7 @@ class Profile extends Component {
             if (doc.data().pictureURL && doc.data().storageURL) {
               pic = [{
                 uid: -1,
-                name: 'profile.pic',
+                name: 'profilepic',
                 status: 'done',
                 url: doc.data().storageURL,
                 thumbUrl: doc.data().storageURL
@@ -186,7 +186,6 @@ class Profile extends Component {
 
   //Modifies status of uploaded file to prevent red outline
   handleChange = ({ fileList }) => {
-    console.log(fileList);
     if (fileList.length > 0) {
       fileList[0].status = "done";
       this.setState({ pic: fileList })
@@ -222,12 +221,12 @@ class Profile extends Component {
                       <FormItem {...formItemLayout} label="Email">
                         <div>{this.state.user.email}</div>
                       </FormItem>
-                      <FormItem {...formItemLayout} label="Profile Picture" extra="Use equal dimensions for best results">
+                      <FormItem {...formItemLayout} label="Profile Picture" extra={'Equal dimensions will give the best result'}>
                         <Upload name="profilepic" fileList={this.state.pic} accept="image/*" listType="picture-card"
-                        action=""
+                        action="//jsonplaceholder.typicode.com/posts/"
                         onPreview={this.handlePreview}
                         onChange={this.handleChange}
-                        beforeUpload={file => {return false}}
+
                         >
                           {!this.state.pic &&
                           <div>

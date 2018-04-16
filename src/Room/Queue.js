@@ -62,7 +62,7 @@ class Queue extends Component {
             title={<span className="truncate">{el.title}</span>}
             description={`${duration} | ${diff}`}
           />
-          <p>Added by [insert name of adder here]</p>
+          <p>Added by {el.adder}</p>
         </List.Item>
       } else {
         return null;

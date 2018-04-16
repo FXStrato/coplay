@@ -53,7 +53,7 @@ class Home extends Component {
             this.props.history.push('/room/' + this.state.user.displayName);
           })
         }).catch(err => {
-          this.setState({loading: true});
+          this.setState({loading: false});
           message.error(err.message);
           console.log(err);
         })

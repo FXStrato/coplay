@@ -35,6 +35,11 @@ const Participants = Loadable({
     import('./Room/Participants'),
   loading: Loading
 });
+const RoomSettings = Loadable({
+  loader: () =>
+    import('./Room/RoomSettings'),
+  loading: Loading
+});
 
 /*
 TODO: Need to run a check to see if this is the user's room, assign them admin privileges
@@ -46,7 +51,7 @@ class Room extends Component {
 
   state = {
     initialLoad: false,
-    tab: 'current',
+    tab: "1",
     tabPosition: 'left',
     tabSize: 'large',
     queueSize: 0,
@@ -98,7 +103,7 @@ class Room extends Component {
   }
 
   onTabChange = (key) => {
-   this.setState({ tab: key });
+    this.setState({ tab: key });
  }
 
   render() {
@@ -108,13 +113,14 @@ class Room extends Component {
         <Row gutter={16}>
           <Col sm={24} md={24} lg={24} xl={18}>
             <Card style={{width: '100%'}}>
-              <Tabs defaultActiveKey="1" tabPosition={this.state.tabPosition} size={this.state.tabSize}>
+              <Tabs defaultActiveKey="1" onChange={this.onTabChange} tabPosition={this.state.tabPosition} size={this.state.tabSize}>
                 <TabPane tab={<span>Now Playing</span>} key="1"><Current/></TabPane>
                 <TabPane tab={<span>Search</span>} key="2"><Search/></TabPane>
                 <TabPane tab={<span>Queue {this.state.queueSize > 0 && <Badge count={this.state.queueSize} style={{ backgroundColor: '#03a09e' }}/>}</span>} key="3"><Queue/></TabPane>
                 <TabPane tab={<span>History</span>} key="4"><History/></TabPane>
                 <TabPane tab={<span>Playlists</span>} key="5"><Playlists/></TabPane>
                 <TabPane tab={<span>Participants</span>} key="6"><Participants list={this.state.participants} user={this.state.user}/></TabPane>
+                <TabPane tab={<span>Settings</span>} key="7">{this.state.tab === "7" ? <RoomSettings user={this.state.user} roomID={this.state.roomID}/>: null}</TabPane>
               </Tabs>
             </Card>
           </Col>
