@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Row, Col, Input, List, message, Spin, Button } from 'antd';
+import { Row, Col, Input, List, message, Spin, Button, Popconfirm } from 'antd';
 import ProgressiveImage from 'react-progressive-image-loading';
 import Img from 'react-image';
 import LazyLoad from 'react-lazyload';
@@ -22,23 +22,25 @@ class Search extends Component {
   }
 
   renderList = (data, durations) => {
-    return data.items.map((el, index) => {
-      let duration = this.formatDuration(durations.items[index].contentDetails.duration);
-      return (
-        <List.Item key={`listitem-${index}`} className="center"
-          actions={[<span>{el.snippet.channelTitle}</span>, <span>{duration}</span>]}
-          extra={<LazyLoad height={'100%'} overflow={true}>
-            <ProgressiveImage preview={el.snippet.thumbnails.medium.url} src={el.snippet.thumbnails.medium.url} render={(src, style) => <Img className="list-image shadow" style={style} src={src} alt={`${el.id.videoId}-thumbnail`}/>}/></LazyLoad>}>
-          <List.Item.Meta
-            title={el.snippet.title}
-            description={el.snippet.description.substring(0, 100) + '...'}
-          />
-          <div>
-            <Button loading={el.isLoading} onClick={() => this.handleAdd(index)}>Add To Queue</Button>
-          </div>
-        </List.Item>
-      );
-    });
+    if(data.items.length > 0 && durations.items.length > 0) {
+      return data.items.map((el, index) => {
+        let duration = this.formatDuration(durations.items[index].contentDetails.duration);
+        return (
+          <List.Item key={`listitem-${index}`} className="center"
+            actions={[<span>{el.snippet.channelTitle}</span>, <span>{duration}</span>]}
+            extra={<LazyLoad height={'100%'} overflow={true}>
+              <ProgressiveImage preview={el.snippet.thumbnails.medium.url} src={el.snippet.thumbnails.medium.url} render={(src, style) => <Img className="list-image list-shadow" style={style} src={src} alt={`${el.id.videoId}-thumbnail`}/>}/></LazyLoad>}>
+            <List.Item.Meta
+              title={el.snippet.title}
+              description={el.snippet.description.substring(0, 100) + '...'}
+            />
+            <div>
+              <Button loading={el.isLoading} onClick={() => this.handleAdd(index)}>Add To Queue</Button>
+            </div>
+          </List.Item>
+        );
+      });
+    } else return null;
   }
 
   handleAdd = (index) => {
@@ -46,7 +48,7 @@ class Search extends Component {
     let temp = this.state.data;
     temp.items[index].isLoading = true;
     this.setState({ data: temp });
-    db.collection("rooms").doc("ABC").collection("queue").add({
+    db.collection("rooms").doc(this.props.fbid).collection("queue").add({
       url: 'https://www.youtube.com/watch?v=' + temp.items[index].id.videoId + '&list=' + temp.items[index].id.videoId,
       title: temp.items[index].snippet.title,
       description: temp.items[index].snippet.description,
@@ -112,22 +114,15 @@ class Search extends Component {
         this.setState({ resultsLoad: true, loadedNumber: temp });
         this.getResults(this.state.value, this.state.data.nextPageToken).then(res => {
           if (!res.error) {
-            let temp = this.state.data;
-            temp.nextPageToken = res.nextPageToken;
-            temp.items = temp.items.concat(res.items);
-            this.setState({ data: temp });
-            this.getDurations(res).then(res => {
-              let temp = this.state.durations;
-              temp.items = temp.items.concat(res.items);
-              if (!res.error) {
-                let newData = this.state.data;
-                newData.items = newData.items.map((el) => {
-                  let elem = el;
-                  elem.isLoading = false;
-                  return elem;
-                });
-                this.setState({ durations: temp, resultsLoad: false, data: newData });
-                this.renderList(newData, temp);
+            let newData = this.state.data;
+            newData.nextPageToken = res.nextPageToken;
+            newData.items = newData.items.concat(res.items);
+            this.getDurations(res).then(response => {
+              if (!response.error) {
+                let newDurations = this.state.durations;
+                newDurations.items = newDurations.items.concat(response.items);
+                this.setState({ durations: newDurations, resultsLoad: false, data: newData });
+                this.renderList(newData, newDurations);
               } else {
                 console.log(res);
                 message.error(res.error.message);
@@ -146,6 +141,10 @@ class Search extends Component {
         });
       }
     }
+  }
+
+  handleDelete = () => {
+    this.setState({data: null, durations: null, loadedNumber: 0})
   }
 
   //Returns search results, need to get duration separately
@@ -199,11 +198,11 @@ class Search extends Component {
   render() {
 
     let list;
-    if (this.state.data && this.state.durations) list = this.renderList(this.state.data, this.state.durations);
+    if (this.state.data && this.state.data.items.length > 0 && this.state.durations && this.state.durations.items.length > 0 && this.state.durations.items.length === this.state.data.items.length) list = this.renderList(this.state.data, this.state.durations);
 
     return (
       <div>
-        <Row type="flex" justify="center">
+        <Row type="flex" justify="center" gutter={16}>
           <Col xs={24} sm={24} md={18} lg={12}>
             <SearchInput
               placeholder="Search by keyword"
@@ -213,6 +212,14 @@ class Search extends Component {
             />
           </Col>
         </Row>
+        {this.state.data && this.state.durations ?
+        <Row>
+          <Col span={24}>
+            <Popconfirm title="Clear search?" onConfirm={this.handleDelete}><Button className="right"><i className="material-icons" style={{verticalAlign: 'middle'}}>clear_all</i></Button></Popconfirm>
+          </Col>
+        </Row>
+        :
+        null}
         <Row onScroll={this.handleScroll} style={{marginTop: 10, maxHeight: '65vh', overflow: 'auto', padding: 8}}>
           <Col span={24}>
             <Spin spinning={this.state.loading} className="center" style={{width: '100%'}}>

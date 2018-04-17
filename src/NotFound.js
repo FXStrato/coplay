@@ -14,7 +14,7 @@ class NotFound extends Component {
             <Lazy height={400}><Img src={Boba} className="responsive-img" style={{maxHeight: 400}}/></Lazy>
           </Col>
           <Col sm={24} md={{span: 12}} className="center-align">
-            <p className="flow-text">I'm sorry, but it seems like the page you were looking for does not exist. <br/> To return to the last page you were on, <a onClick={() => this.props.history.goBack()}>click here</a></p>
+            <p className="flow-text">I'm sorry, but it seems like the page you were looking for does not exist.</p>
           </Col>
         </Row>
       </div>

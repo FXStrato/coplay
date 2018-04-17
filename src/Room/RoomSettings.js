@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Row, Col, Form, Input, Tooltip, Icon, InputNumber, Button, Checkbox, message } from 'antd';
+import { Row, Col, Form, Input, Tooltip, Icon, InputNumber, Button, Checkbox, message, Popconfirm, Spin } from 'antd';
 import firebase from 'firebase';
 const FormItem = Form.Item;
 const { TextArea } = Input;
@@ -9,13 +9,21 @@ class RoomSettings extends Component {
 
   state = {
     loading: false,
-    room: null
+    room: null,
+    fbid: null
   }
 
   componentWillMount = () => {
-    db.collection('rooms').doc(this.props.roomID).get().then(doc => {
-      this.setState({ room: doc.data() });
-    });
+    db.collection('rooms').where('name', '==', this.props.roomID).get().then(snap => {
+      if(snap.docs.length === 1) {
+        this.setState({ room: snap.docs[0].data(), fbid: snap.docs[0].id });
+      } else {
+        message.error('Unable to load room settings');
+      }
+    }).catch(err => {
+      message.error(err.message);
+      console.log(err);
+    })
   }
 
   handleSubmit = e => {
@@ -23,7 +31,7 @@ class RoomSettings extends Component {
     this.setState({ loading: true });
     this.props.form.validateFieldsAndScroll((err, values) => {
       if (!err) {
-        db.collection('rooms').doc(this.props.user.displayName).update(this.state.room).then(() => {
+        db.collection('rooms').doc(this.state.fbid).update(this.state.room).then(() => {
           message.success('Successfully saved settings');
           this.setState({ loading: false });
         }).catch(err => {
@@ -31,9 +39,28 @@ class RoomSettings extends Component {
           message.error(err.message);
           console.log(err);
         })
-
       }
     });
+  }
+
+  //Deletes room, if room was public, remove it from public list as well
+  handleDelete = () => {
+    if(this.state.room) {
+      db.collection("rooms").doc(this.state.fbid).delete();
+      if(this.state.room.isPublic) {
+        db.collection("public").doc(this.state.fbid).delete();
+      }
+    }
+  }
+
+  //Call this function if public was selected, will place room into public list
+  handlePublic = (temp) => {
+    db.collection("public").doc(this.state.fbid).set(temp).then(() => {
+
+    }).catch(err => {
+      message.error(err.message);
+      console.log(err);
+    })
   }
 
   handleCheckbox = (e, param) => {
@@ -55,12 +82,23 @@ class RoomSettings extends Component {
       },
     };
     return (
-      <div>
+      <Spin spinning={this.state.loading} style={{width: '100%'}} className="center">
         {this.state.room &&
-        <Row className="animated fadeIn">
+        <Row>
+          <Col span={24}>
+            <Popconfirm
+              title="Confirm Delete"
+              onConfirm={this.handleDelete}
+            >
+              <Button className="right">Delete Room</Button>
+            </Popconfirm>
+          </Col>
           <Col sm={24} md={24} lg={24} xl={11}>
             <h3>Room Settings</h3>
             <Form onSubmit={this.handleSubmit} hideRequiredMark={true}>
+              <FormItem {...formItemLayout} label="Room Name">
+                <p>{this.state.room.name}'s Room</p>
+              </FormItem>
               <FormItem {...formItemLayout} label="Room Description">
                  {getFieldDecorator('description', {initialValue: this.state.room.description})(
                    <TextArea rows={3}/>
@@ -68,26 +106,26 @@ class RoomSettings extends Component {
                </FormItem>
                <FormItem {...formItemLayout} label={(
                  <span>
-                   Make Public&nbsp;
-                   <Tooltip title="Rooms are private by default; private rooms will not show up on the public room list.">
+                   Is Public&nbsp;
+                   <Tooltip title="Private rooms will not show up on the public room list">
                      <Icon type="question-circle-o" />
                    </Tooltip>
                  </span>
                )}>
-                  {getFieldDecorator('visibility', { valuePropName: 'visiblity', initialValue: this.state.room.visibility })(
-                    <Checkbox checked={this.state.room.visibility} onChange={e => this.handleCheckbox(e, 'visibility')}/>
+                  {getFieldDecorator('isPublic', { valuePropName: 'isPublic', initialValue: this.state.room.isPublic })(
+                    <Checkbox checked={this.state.room.isPublic} onChange={e => this.handleCheckbox(e, 'isPublic')}/>
                   )}
                 </FormItem>
                 <FormItem {...formItemLayout} label={(
                   <span>
-                    Open Queueing&nbsp;
-                    <Tooltip title="Checking this box will allow room visitors not signed in to queue up items">
+                    Open Queue&nbsp;
+                    <Tooltip title="Checking this box will allow room visitors that are not signed in to queue up items">
                       <Icon type="question-circle-o" />
                     </Tooltip>
                   </span>
                 )}>
-                   {getFieldDecorator('open_queue', { valuePropName: 'open_queue', initialValue: this.state.room.open_queue })(
-                     <Checkbox checked={this.state.room.open_queue} onChange={(e) => this.handleCheckbox(e, 'open_queue')}/>
+                   {getFieldDecorator('isOpen', { valuePropName: 'isOpen', initialValue: this.state.room.isOpen })(
+                     <Checkbox checked={this.state.room.isOpen} onChange={(e) => this.handleCheckbox(e, 'isOpen')}/>
                    )}
                  </FormItem>
                  <FormItem {...formItemLayout} label={<span>
@@ -109,7 +147,7 @@ class RoomSettings extends Component {
           </Col>
         </Row>
         }
-      </div>
+      </Spin>
     );
   }
 }

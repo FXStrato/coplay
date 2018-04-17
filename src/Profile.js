@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Row, Col, Tabs, Icon, Spin, Form, Upload, Button, Modal, message } from 'antd';
+import { Row, Col, Tabs, Icon, Spin, Form, Upload, Button, Modal, message, Input } from 'antd';
 import firebase from 'firebase';
 import Loadable from 'react-loadable';
 import Loading from './Loading';
@@ -26,6 +26,8 @@ class Profile extends Component {
     user: null,
     dbUser: null,
     pic: null,
+    deleteModal: false,
+    deleteInput: null,
   }
 
   componentWillMount = () => {
@@ -194,6 +196,52 @@ class Profile extends Component {
     }
   }
 
+  handleDelete = () => {
+    this.setState({loading: true});
+    console.log('delete was called');
+    const credential = firebase.auth.EmailAuthProvider.credential(this.state.user.email, this.state.deleteInput);
+    this.state.user.reauthenticateWithCredential(credential).then(() => {
+      storage.ref().child(this.state.dbUser.pictureURL).delete().then(() => {
+        this.handleDBDelete();
+        this.state.user.delete().then(() => {
+          this.props.history.push('/');
+        }).catch(err => {
+          this.setState({loading: false});
+          message.error(err.message);
+          console.log(err);
+        })
+      }).catch(err => {
+        if(!err.code.includes('object-not-found')) {
+          //Means they did not have a picture to delete
+          message.error('Error occured removing old picture from storage');
+          console.log(err);
+          this.setState({ loading: false });
+        } else {
+          this.handleDBDelete();
+          this.state.user.delete().then(() => {
+            this.props.history.push('/');
+          }).catch(err => {
+            this.setState({loading: false});
+            message.error(err.message);
+            console.log(err);
+          })  
+        }
+      })
+    }).catch(err => {
+      this.setState({loading: false});
+      message.error(err.message);
+      console.log(err);
+    });
+  }
+
+  handleDBDelete = () => {
+    db.collection('rooms').doc(this.state.user.uid).delete();
+    db.collection('public').doc(this.state.user.uid).delete();
+    db.collection('users').doc(this.state.user.uid).delete();
+    db.collection('nicknames').doc(this.state.user.displayName).delete();
+    firebase.database().ref('/status/' + this.state.user.uid).remove();
+  }
+
   render() {
     //const { getFieldDecorator } = this.props.form;
     const formItemLayout = {
@@ -203,65 +251,83 @@ class Profile extends Component {
     return (
       <Spin className="center" spinning={this.state.loading} style={{width: '100%'}}>
         {this.state.initialLoad &&
-        <Row>
-          {!this.state.user ?
-          <Col span={24}>
-            <h3>Login to view profile</h3>
-          </Col>
-          :
-          <Col span={24}>
-            <Tabs defaultActiveKey="1">
-              <TabPane tab={<span><Icon type="user" />General</span>} key="1">
-                <Row>
-                  <Col xs={24} sm={24} md={18} lg={12} xl={6}>
-                    <Form onSubmit={this.handleSubmit}>
-                      <FormItem {...formItemLayout} label="Display Name" style={{marginBottom: 5}}>
-                        <div>{this.state.user.displayName}</div>
-                      </FormItem>
-                      <FormItem {...formItemLayout} label="Email">
-                        <div>{this.state.user.email}</div>
-                      </FormItem>
-                      <FormItem {...formItemLayout} label="Profile Picture" extra={'Equal dimensions will give the best result'}>
-                        <Upload name="profilepic" fileList={this.state.pic} accept="image/*" listType="picture-card"
-                        action="//jsonplaceholder.typicode.com/posts/"
-                        onPreview={this.handlePreview}
-                        onChange={this.handleChange}
+        <div>
+          <Row>
+            {!this.state.user ?
+            <Col span={24}>
+              <h3>Login to view profile</h3>
+            </Col>
+            :
+            <Col span={24}>
+              <Tabs defaultActiveKey="1" tabBarExtraContent={<Button onClick={() => this.setState({deleteModal: true})}>Delete Account</Button>}>
+                <TabPane tab={<span><Icon type="user" />General</span>} key="1">
+                  <Row>
+                    <Col xs={24} sm={24} md={18} lg={12} xl={6}>
+                      <Form onSubmit={this.handleSubmit}>
+                        <FormItem {...formItemLayout} label="Display Name" style={{marginBottom: 5}}>
+                          <div>{this.state.user.displayName}</div>
+                        </FormItem>
+                        <FormItem {...formItemLayout} label="Email">
+                          <div>{this.state.user.email}</div>
+                        </FormItem>
+                        <FormItem {...formItemLayout} label="Profile Picture" extra={'Equal dimensions will give the best result'}>
+                          <Upload name="profilepic" fileList={this.state.pic} accept="image/*" listType="picture-card"
+                          action="//jsonplaceholder.typicode.com/posts/"
+                          onPreview={this.handlePreview}
+                          onChange={this.handleChange}
 
-                        >
-                          {!this.state.pic &&
-                          <div>
-                            <Icon type="upload" /> <br/> Click to upload
-                          </div>
-                          }
-                        </Upload>
-                      </FormItem>
-                      <FormItem label="Account" {...formItemLayout}>
-                        <Button onClick={() => this.setState({change: true})}>Change Password</Button>
-                      </FormItem>
-                      <FormItem style={{marginBottom: 5}}>
-                        <Button loading={this.state.formloading} type="primary" htmlType="submit" style={{width: '100%'}}>Save Changes</Button>
-                      </FormItem>
-                    </Form>
-                    <Modal visible={this.state.preview} footer={null} onCancel={() => this.setState({preview: false})}>
-                      <Img alt="profile-preview" style={{ width: '100%' }} src={this.state.previewImage} />
-                    </Modal>
-                    <Modal title="Changing Password" visible={this.state.change} footer={null} onCancel={() => this.setState({change: false})}>
-                      <ChangePassword callback={this.handleCallback}/>
-                    </Modal>
-                  </Col>
-                </Row>
-              </TabPane>
-              <TabPane tab={<span><Icon type="laptop" />Room Settings</span>} key="2">
-                <Row>
-                  <Col xs={24} sm={24} md={18} lg={12} xl={6}>
-                    Tab 2, Room settings
-                  </Col>
-                </Row>
-              </TabPane>
-            </Tabs>
-          </Col>
-          }
-        </Row>
+                          >
+                            {!this.state.pic &&
+                            <div>
+                              <Icon type="upload" /> <br/> Click to upload
+                            </div>
+                            }
+                          </Upload>
+                        </FormItem>
+                        <FormItem {...formItemLayout}>
+                          <Button onClick={() => this.setState({change: true})}>Change Password</Button>
+                        </FormItem>
+                        <FormItem style={{marginBottom: 5}}>
+                          <Button loading={this.state.formloading} type="primary" htmlType="submit" style={{width: '100%'}}>Save Changes</Button>
+                        </FormItem>
+                      </Form>
+                      <Modal visible={this.state.preview} footer={null} onCancel={() => this.setState({preview: false})}>
+                        <Img alt="profile-preview" style={{ width: '100%' }} src={this.state.previewImage} />
+                      </Modal>
+                      <Modal title="Changing Password" visible={this.state.change} footer={null} onCancel={() => this.setState({change: false})}>
+                        <ChangePassword callback={this.handleCallback}/>
+                      </Modal>
+                    </Col>
+                  </Row>
+                </TabPane>
+                <TabPane tab={<span><Icon type="laptop" />Room Settings</span>} key="2">
+                  <Row>
+                    <Col xs={24} sm={24} md={18} lg={12} xl={6}>
+                      Tab 2, Room settings
+                    </Col>
+                  </Row>
+                </TabPane>
+              </Tabs>
+            </Col>
+            }
+          </Row>
+          <Modal
+            visible={this.state.deleteModal}
+            title="Confirm Account Deletion"
+            onOk={this.handleDelete}
+            onCancel={() => this.setState({deleteModal: false})}
+            footer={[
+              <Button key="back" onClick={() => this.setState({deleteModal: false})}>Cancel</Button>,
+              <Button key="submit" type="danger" loading={this.state.loading} onClick={this.handleDelete}>
+                Delete Account
+              </Button>,
+            ]}
+          >
+            <p>This action is irreversible. To proceed, please retype your password.</p>
+            <Input type="password" onChange={e => this.setState({deleteInput: e.target.value})}/>
+          </Modal>
+        </div>
+
         }
       </Spin>
     );

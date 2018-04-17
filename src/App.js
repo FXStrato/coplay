@@ -70,7 +70,7 @@ class App extends Component {
         firebase.database().ref('.info/connected').on('value', snap => {
           if(!snap.val()) {
             //firebase.firestore().doc('/status/' + user.uid).set({state: 'offline', last_seen: firebase.firestore.FieldValue.serverTimestamp()});
-            firebase.firestore().collection('rooms').doc('ABC').collection('party').doc(user.uid).delete();
+            firebase.firestore().collection('rooms').doc(user.uid).collection('participants').doc(user.uid).delete();
             return;
           }
           //TODO: if disconnecting in a room, remove self from room party list

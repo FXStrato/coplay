@@ -19,22 +19,20 @@ class History extends Component {
     listType: 'horizontal'
   }
 
+  componentWillReceiveNewProps = (next, prev) => {
+    if(next.fbid && !this.state.fbid)  {
+      this.setState({fbid: next.fbid});
+      this.getHistory(next.fbid);
+    }
+  }
+
   componentDidUpdate = () => {
     if(this.history) this.history.focus();
   }
 
   componentWillMount = () => {
     this.setState({loading: true});
-    this.historyRef = db.collection("rooms").doc("ABC").collection("history").orderBy("timestamp", "desc").onSnapshot(snap => {
-      let temp = [];
-      snap.forEach(doc => {
-        let newDoc = doc.data();
-        newDoc.fbid = doc.id;
-        newDoc.isLoading = false;
-        temp.push(newDoc);
-      })
-      this.setState({data: temp, loading: false});
-    })
+    this.getHistory(this.props.fbid);
     if(window.innerWidth <= 768) {
       //Change tab to top
       this.setState({listType: 'vertical'});
@@ -44,6 +42,20 @@ class History extends Component {
 
   componentWillUnmount = () => {
     this.historyRef();
+  }
+
+  getHistory = fbid => {
+    this.setState({loading: true});
+    this.historyRef = db.collection('rooms').doc(fbid).collection('history').orderBy('timestamp', 'asc').onSnapshot(snap => {
+      let temp = [];
+      snap.forEach(doc => {
+        let newDoc = doc.data();
+        newDoc.fbid = doc.id;
+        newDoc.isLoading = false;
+        temp.push(newDoc);
+      })
+      this.setState({data: temp, loading: false});
+    })
   }
 
   renderList = (data) => {
@@ -58,9 +70,9 @@ class History extends Component {
            actions={[<Popconfirm title="Remove from history?" onConfirm={(e) => this.handleDelete(el.fbid, index)}><Button loading={el.isLoading}>{!el.isLoading && <Icon type="delete"/>}</Button></Popconfirm>]}
            extra={this.state.listType === 'vertical' ? <LazyLoad height={'100%'} overflow={true}><Img className="queue-image" src={el.thumbnails.medium.url} alt={`${el.videoId}-thumbnail`}/></LazyLoad> : null}>
           <List.Item.Meta
-            avatar={this.state.listType === 'horizontal' ? <LazyLoad height={'100%'} overflow={true}><Img className="queue-image shadow" src={el.thumbnails.medium.url} alt={`${el.videoId}-thumbnail`}/></LazyLoad> : null}
+            avatar={this.state.listType === 'horizontal' ? <LazyLoad height={'100%'} overflow={true}><Img className="queue-image list-shadow" src={el.thumbnails.medium.url} alt={`${el.videoId}-thumbnail`}/></LazyLoad> : null}
             title={<span className="truncate">{el.title}</span>}
-            description={`${duration} | ${diff}`}
+            description={`${duration} | Added ${diff}`}
           />
           <p>Added by {el.adder}</p>
         </List.Item>
@@ -74,7 +86,7 @@ class History extends Component {
     let temp = this.state.data;
     temp[index].isLoading = true;
     this.setState({data: temp});
-    db.collection('rooms').doc('ABC').collection('history').doc(id).delete().then(() => {
+    db.collection('rooms').doc(this.props.fbid).collection('history').doc(id).delete().then(() => {
       //this.getList();
     }).catch(err => {
       console.log(err);
@@ -83,9 +95,9 @@ class History extends Component {
 
   handleMassDelete = () => {
     this.setState({listLoading: true});
-    db.collection('rooms').doc('ABC').collection('history').get().then(snap => {
+    db.collection('rooms').doc(this.props.fbid).collection('history').get().then(snap => {
       snap.forEach(doc => {
-        db.collection('rooms').doc('ABC').collection('history').doc(doc.id).delete();
+        db.collection('rooms').doc(this.props.fbid).collection('history').doc(doc.id).delete();
       })
       this.setState({listLoading: false});
     }).catch(err => {

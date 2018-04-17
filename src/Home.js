@@ -47,8 +47,11 @@ class Home extends Component {
       if(!err) {
         let temp = values;
         temp.name = this.state.user.displayName;
+        temp.owner = this.state.user.uid;
+        temp.ownerPic = this.state.user.photoURL || null;
         temp.timestamp = firebase.firestore.FieldValue.serverTimestamp();
-        db.collection('rooms').doc(this.state.user.displayName).set(temp).then(() => {
+        db.collection('rooms').doc(this.state.user.uid).set(temp).then(() => {
+          if(values.isPublic) this.handlePublic(temp);
           db.collection('users').doc(this.state.user.uid).update({roomMade: true}).then(() => {
             this.props.history.push('/room/' + this.state.user.displayName);
           })
@@ -60,6 +63,16 @@ class Home extends Component {
         console.log(temp);
       }
     });
+  }
+
+  //Call this function if public was selected, will place room into public list
+  handlePublic = (temp) => {
+    db.collection("public").doc(this.state.user.uid).set(temp).then(() => {
+
+    }).catch(err => {
+      message.error(err.message);
+      console.log(err);
+    })
   }
 
   render() {
@@ -131,25 +144,25 @@ class Home extends Component {
              </FormItem>
              <FormItem {...formItemLayout} label={(
                <span>
-                 Make Public&nbsp;
-                 <Tooltip title="Rooms are private by default; private rooms will not show up on the public room list.">
+                 Is Public&nbsp;
+                 <Tooltip title="Public rooms will show up on the public room list; private will not">
                    <Icon type="question-circle-o" />
                  </Tooltip>
                </span>
              )}>
-                {getFieldDecorator('visibility', { valuePropName: 'visiblity', initialValue: false })(
+                {getFieldDecorator('isPublic', { valuePropName: 'isPublic', initialValue: false })(
                   <Checkbox/>
                 )}
               </FormItem>
               <FormItem {...formItemLayout} label={(
                 <span>
-                  Open Queueing&nbsp;
+                  Open Queue&nbsp;
                   <Tooltip title="Checking this box will allow room visitors not signed in to queue up items">
                     <Icon type="question-circle-o" />
                   </Tooltip>
                 </span>
               )}>
-                 {getFieldDecorator('open_queue', { valuePropName: 'open_queue', initialValue: false })(
+                 {getFieldDecorator('isOpen', { valuePropName: 'isOpen', initialValue: false })(
                    <Checkbox/>
                  )}
                </FormItem>

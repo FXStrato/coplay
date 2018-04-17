@@ -1,8 +1,31 @@
 import React, { Component } from 'react';
 import { Row, Col, List, Icon, Avatar } from 'antd';
-
+import firebase from 'firebase';
+const db = firebase.firestore();
 
 class RoomLanding extends Component {
+
+  state = {
+    roomlist: null,
+  }
+
+  componentWillMount = () => {
+    this.publicRef = db.collection('public').onSnapshot(snap => {
+      let roomlist = [];
+      snap.forEach(doc => {
+        let item = doc.data();
+        item.id = doc.id;
+        roomlist.push(item);
+      })
+      this.setState({roomlist});
+      console.log(roomlist);
+    })
+  }
+
+  componentWillUnmount = () => {
+    this.publicRef();
+  }
+
   render() {
 
     const listData = [];

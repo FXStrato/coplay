@@ -36,14 +36,14 @@ class Current extends Component {
   }
 
   componentWillMount = () => {
-    this.queueRef = db.collection("rooms").doc("ABC").collection("queue").orderBy('timestamp', 'asc').onSnapshot(snap => {
+    this.queueRef = db.collection("rooms").doc(this.props.fbid).collection("queue").orderBy('timestamp', 'asc').onSnapshot(snap => {
       if (snap.docs.length > 0) {
         this.setState({ next: snap.docs[0].data(), loading: false });
       } else {
         this.setState({ next: null });
       }
     })
-    this.npRef = db.collection('rooms').doc('ABC').collection('np').doc('np').onSnapshot(doc => {
+    this.npRef = db.collection('rooms').doc(this.props.fbid).collection('np').doc('np').onSnapshot(doc => {
       if (doc.exists) {
         this.setState({ np: doc.data(), played: doc.data().seek || 0, playerLoading: false });
       } else this.setState({ playerLoading: false });
@@ -72,7 +72,7 @@ class Current extends Component {
     let temp = this.state.np;
     temp.playing = true;
     temp.seek = this.state.played;
-    db.collection('rooms').doc('ABC').collection('np').doc('np').update(temp);
+    db.collection('rooms').doc(this.props.fbid).collection('np').doc('np').update(temp);
     this.setState({ playing: true, initialSeek: true });
   }
 
@@ -80,7 +80,7 @@ class Current extends Component {
     let temp = this.state.np;
     temp.playing = false;
     temp.seek = this.state.played;
-    db.collection('rooms').doc('ABC').collection('np').doc('np').update(temp);
+    db.collection('rooms').doc(this.props.fbid).collection('np').doc('np').update(temp);
     this.setState({ playing: false });
   }
 
@@ -93,13 +93,13 @@ class Current extends Component {
     let np = this.state.np;
     let currentPlaying = this.state.playing;
     this.setState({ playing: false, playerLoading: true, duration: null, played: 0 });
-    db.collection('rooms').doc('ABC').collection('queue').orderBy('timestamp', 'asc').limit(1).get().then(snap => {
+    db.collection('rooms').doc(this.props.fbid).collection('queue').orderBy('timestamp', 'asc').limit(1).get().then(snap => {
       if (snap.docs.length > 0) {
         let temp = snap.docs[0].data();
         temp.playing = currentPlaying;
         temp.seek = 0;
-        db.collection('rooms').doc('ABC').collection('np').doc('np').set(temp).then(res => {
-          db.collection('rooms').doc('ABC').collection('queue').doc(snap.docs[0].id).delete().then(res => {
+        db.collection('rooms').doc(this.props.fbid).collection('np').doc('np').set(temp).then(res => {
+          db.collection('rooms').doc(this.props.fbid).collection('queue').doc(snap.docs[0].id).delete().then(res => {
             this.setState({ playerLoading: false });
           }).catch(err => {
             this.setState({ playerLoading: false });
@@ -110,11 +110,11 @@ class Current extends Component {
           console.log(err);
         });
       } else {
-        db.collection('rooms').doc('ABC').collection('np').doc('np').set({}).then(res => {
+        db.collection('rooms').doc(this.props.fbid).collection('np').doc('np').set({}).then(res => {
           this.setState({ playerLoading: false });
         });
       }
-      db.collection('rooms').doc('ABC').collection('history').add(np);
+      db.collection('rooms').doc(this.props.fbid).collection('history').add(np);
     })
   }
 

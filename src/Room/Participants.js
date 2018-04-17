@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Row, Col, Table, Avatar } from 'antd';
+import { Row, Col, Table, Avatar, Icon } from 'antd';
 import moment from 'moment';
 
 class Participants extends Component {
@@ -27,17 +27,14 @@ class Participants extends Component {
     const columns = [{
       title: 'Name',
       dataIndex: 'name',
-      render: (text, record) => <span><Avatar src={record.photoURL} style={{marginRight: 5}}/>{text}</span>
-    }, {
-      title: 'Rank',
-      dataIndex: 'rank',
+      render: (text, record) => <span><Avatar icon={record.photoURL ? null : 'user'} src={record.photoURL} style={{marginRight: 5}}/>{text} {this.props.owner === record.key ? <Icon style={{marginLeft: 2}} type="star"/>: null}</span>
     }]
     return (
       <div>
         <Row>
           <Col span={24}>
             <h3>Participants</h3>
-            <Table columns={columns} dataSource={data}/>
+            <Table showHeader={false} columns={columns} dataSource={data}/>
           </Col>
         </Row>
       </div>

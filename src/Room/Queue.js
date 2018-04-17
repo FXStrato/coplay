@@ -16,7 +16,15 @@ class Queue extends Component {
     page: 1,
     pageSize: 5,
     total: null,
-    listType: 'horizontal'
+    listType: 'horizontal',
+    fbid: null,
+  }
+
+  componentWillReceiveNewProps = (next, prev) => {
+    if(next.fbid && !this.state.fbid)  {
+      this.setState({fbid: next.fbid});
+      this.getQueue(next.fbid);
+    }
   }
 
   componentDidUpdate = () => {
@@ -24,8 +32,20 @@ class Queue extends Component {
   }
 
   componentWillMount = () => {
+    this.getQueue(this.props.fbid);
+    if(window.innerWidth <= 768) {
+      //Change tab to top
+      this.setState({listType: 'vertical'});
+    }
+  }
+
+  componentWillUnmount = () => {
+    this.queueRef();
+  }
+
+  getQueue = fbid => {
     this.setState({loading: true});
-    this.queueRef = db.collection("rooms").doc("ABC").collection("queue").orderBy("timestamp", "asc").onSnapshot(snap => {
+    this.queueRef = db.collection('rooms').doc(fbid).collection('queue').orderBy('timestamp', 'asc').onSnapshot(snap => {
       let temp = [];
       snap.forEach(doc => {
         let newDoc = doc.data();
@@ -35,15 +55,6 @@ class Queue extends Component {
       })
       this.setState({data: temp, loading: false});
     })
-    if(window.innerWidth <= 768) {
-      //Change tab to top
-      this.setState({listType: 'vertical'});
-    }
-    //this.getList();
-  }
-
-  componentWillUnmount = () => {
-    this.queueRef();
   }
 
   renderList = (data) => {
@@ -58,9 +69,9 @@ class Queue extends Component {
            actions={[<Popconfirm title="Remove from queue?" onConfirm={(e) => this.handleDelete(el.fbid, index)}><Button loading={el.isLoading}>{!el.isLoading && <Icon type="delete"/>}</Button></Popconfirm>]}
            extra={this.state.listType === 'vertical' ? <LazyLoad height={'100%'} overflow={true}><Img className="queue-image" src={el.thumbnails.medium.url} alt={`${el.videoId}-thumbnail`}/></LazyLoad> : null}>
           <List.Item.Meta
-            avatar={this.state.listType === 'horizontal' ? <LazyLoad height={'100%'} overflow={true}><Img className="queue-image shadow" src={el.thumbnails.medium.url} alt={`${el.videoId}-thumbnail`}/></LazyLoad> : null}
+            avatar={this.state.listType === 'horizontal' ? <LazyLoad height={'100%'} overflow={true}><Img className="queue-image list-shadow" src={el.thumbnails.medium.url} alt={`${el.videoId}-thumbnail`}/></LazyLoad> : null}
             title={<span className="truncate">{el.title}</span>}
-            description={`${duration} | ${diff}`}
+            description={`${duration} | Added ${diff}`}
           />
           <p>Added by {el.adder}</p>
         </List.Item>
@@ -74,7 +85,7 @@ class Queue extends Component {
     let temp = this.state.data;
     temp[index].isLoading = true;
     this.setState({data: temp});
-    db.collection('rooms').doc('ABC').collection('queue').doc(id).delete().then(() => {
+    db.collection('rooms').doc(this.props.fbid).collection('queue').doc(id).delete().then(() => {
       //this.getList();
     }).catch(err => {
       console.log(err);
@@ -83,9 +94,9 @@ class Queue extends Component {
 
   handleMassDelete = () => {
     this.setState({listLoading: true});
-    db.collection('rooms').doc('ABC').collection('queue').get().then(snap => {
+    db.collection('rooms').doc(this.props.fbid).collection('queue').get().then(snap => {
       snap.forEach(doc => {
-        db.collection('rooms').doc('ABC').collection('queue').doc(doc.id).delete();
+        db.collection('rooms').doc(this.props.fbid).collection('queue').doc(doc.id).delete();
       })
       this.setState({listLoading: false});
     }).catch(err => {
