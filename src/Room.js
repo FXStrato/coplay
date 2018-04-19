@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Row, Col, Card, Tabs, Badge, message } from 'antd';
+import { Row, Col, Card, Tabs, Badge, message, Modal, Spin } from 'antd';
 import firebase from 'firebase';
 import Loadable from 'react-loadable';
 import Loading from './Loading';
@@ -68,37 +68,46 @@ class Room extends Component {
     //If room exists, continue with load
     db.collection('rooms').where('name', '==', roomID).get().then(snap => {
       if(snap.docs.length === 1) {
-        this.setState({fbid: snap.docs[0].id, room: snap.docs[0].data()})
-
-        this.authRef = firebase.auth().onAuthStateChanged((user) => {
-          if (user) {
-            this.setState({user});
-            let temp = {
-              name: user.displayName,
-              photoURL: user.photoURL,
-              timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        let data = snap.docs[0].data();
+        //Check Capacity
+        if(data.participantCount >= data.capacity) {
+          this.setState({initialLoad: true});
+          Modal.info({
+            title: 'Room at Full Capacity',
+            content: <div><p>Unable to join room; room capacity limit has been reached</p></div>
+          })
+        } else {
+          this.setState({fbid: snap.docs[0].id, room: snap.docs[0].data()})
+          this.authRef = firebase.auth().onAuthStateChanged((user) => {
+            if (user) {
+              this.setState({user});
+              let temp = {
+                name: user.displayName,
+                photoURL: user.photoURL,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+              }
+              db.collection("rooms").doc(snap.docs[0].id).collection("participants").doc(user.uid).set(temp).then(() => {
+                this.setState({initialLoad: true});
+              }).catch(err => {
+                message.error('Error occured adding to party list');
+                console.log(err);
+                this.setState({initialLoad: true});
+              });
+            } else {
+              this.setState({initialLoad: true});
             }
-            db.collection("rooms").doc(snap.docs[0].id).collection("participants").doc(user.uid).set(temp).then(() => {
-              this.setState({initialLoad: true});
-            }).catch(err => {
-              message.error('Error occured adding to party list');
-              console.log(err);
-              this.setState({initialLoad: true});
-            });
-          } else {
-            this.setState({initialLoad: true});
-          }
-        });
+          });
 
-        this.partyRef = db.collection("rooms").doc(snap.docs[0].id).collection("participants").onSnapshot(snap => {
-          db.collection("rooms").doc(snap.docs[0].id).update({participantCount: snap.docs.length});
-          db.collection("public").doc(snap.docs[0].id).update({participantCount: snap.docs.length});
-          this.setState({participants: snap, participantCount: snap.docs.length});
-        })
+          this.partyRef = db.collection("rooms").doc(snap.docs[0].id).collection("participants").onSnapshot(snap => {
+            db.collection("rooms").doc(snap.docs[0].id).update({participantCount: snap.docs.length});
+            if(data.isPublic) db.collection("public").doc(snap.docs[0].id).update({participantCount: snap.docs.length});
+            this.setState({participants: snap, participantCount: snap.docs.length});
+          })
 
-        this.queueRef = db.collection("rooms").doc(snap.docs[0].id).collection("queue").onSnapshot(snap => {
-          this.setState({queueSize: snap.size});
-        });
+          this.queueRef = db.collection("rooms").doc(snap.docs[0].id).collection("queue").onSnapshot(snap => {
+            this.setState({queueSize: snap.size});
+          });
+        }
       } else {
         this.setState({initialLoad: true});
         //Modal.info({title: 'Room Not Found', content: (<p>The requested room does not exist or has been deleted</p>)})
@@ -115,7 +124,7 @@ class Room extends Component {
     if(this.state.user) {
       db.collection("rooms").doc(this.state.fbid).collection("participants").doc(this.state.user.uid).delete();
       db.collection("rooms").doc(this.state.fbid).update({participantCount: (this.state.participantCount - 1)});
-      db.collection("public").doc(this.state.fbid).update({participantCount: (this.state.participantCount - 1)});
+      if(this.state.room.isPublic) db.collection("public").doc(this.state.fbid).update({participantCount: (this.state.participantCount - 1)});
     }
     if(this.queueRef) this.queueRef();
     if(this.partyRef) this.partyRef();
@@ -128,11 +137,14 @@ class Room extends Component {
 
   render() {
     return (
-      <div>
+      <Spin spinning={!this.state.initialLoad} style={{width: '100%'}} className="center">
         {this.state.initialLoad &&
           <div>
             {this.state.fbid ?
-            <Row gutter={16}>
+            <Row gutter={16} style={{marginTop: -20}}>
+              <Col xs={24} style={{marginBottom: 10}}>
+                <h2 className="center">{this.state.roomID}'s Room</h2>
+              </Col>
               <Col sm={24} md={24} lg={24} xl={18}>
                 <Card style={{width: '100%'}}>
                   <Tabs defaultActiveKey="1" onChange={this.onTabChange} tabPosition={this.state.tabPosition} size={this.state.tabSize}>
@@ -155,7 +167,7 @@ class Room extends Component {
             }
           </div>
         }
-      </div>
+      </Spin>
     );
   }
 }

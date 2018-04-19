@@ -31,9 +31,27 @@ class RoomSettings extends Component {
     this.setState({ loading: true });
     this.props.form.validateFieldsAndScroll((err, values) => {
       if (!err) {
-        db.collection('rooms').doc(this.state.fbid).update(this.state.room).then(() => {
-          message.success('Successfully saved settings');
-          this.setState({ loading: false });
+        let newData = Object.assign(this.state.room, values);
+        db.collection('rooms').doc(this.state.fbid).update(newData).then(() => {
+          if(!values.isPublic) {
+            db.collection("public").doc(this.state.fbid).delete().then(() => {
+              message.success('Successfully saved settings');
+              this.setState({ loading: false });
+            }).catch(err => {
+              this.setState({loading: false});
+              message.error(err.message);
+              console.log(err);
+            })
+          } else {
+            db.collection("public").doc(this.state.fbid).set(newData).then(() => {
+              message.success('Successfully saved settings');
+              this.setState({ loading: false });
+            }).catch(err => {
+              this.setState({loading: false});
+              message.error(err.message);
+              console.log(err);
+            })
+          }
         }).catch(err => {
           this.setState({loading: false});
           message.error(err.message);
@@ -51,16 +69,6 @@ class RoomSettings extends Component {
         db.collection("public").doc(this.state.fbid).delete();
       }
     }
-  }
-
-  //Call this function if public was selected, will place room into public list
-  handlePublic = (temp) => {
-    db.collection("public").doc(this.state.fbid).set(temp).then(() => {
-
-    }).catch(err => {
-      message.error(err.message);
-      console.log(err);
-    })
   }
 
   handleCheckbox = (e, param) => {

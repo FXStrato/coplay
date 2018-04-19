@@ -34,6 +34,15 @@ Vertical Modal
   Utility Classes
 *******************/
 
+.vertical-center {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  min-height: 100vh;
+}
+
 .list-image {
   width: 100%;
   max-width: 250px;

@@ -1,54 +1,64 @@
 import React, { Component } from 'react';
-import { Row, Col, List, Icon, Avatar } from 'antd';
+import { Row, Col, List, Icon, Avatar, Button, Popover } from 'antd';
+import { Link } from 'react-router-dom';
 import firebase from 'firebase';
 const db = firebase.firestore();
 
 class RoomLanding extends Component {
 
   state = {
-    roomlist: null,
+    loading: false,
+    roomlist: [],
+    renderlist: null,
+    page: 1,
+    pageSize: 10,
+    queuePopover: false,
   }
 
   componentWillMount = () => {
-    this.publicRef = db.collection('public').onSnapshot(snap => {
+    this.getList();
+  }
+
+  getList = () => {
+    this.setState({ loading: true });
+    db.collection('public').orderBy('timestamp').limit(100).get().then(snap => {
       let roomlist = [];
       snap.forEach(doc => {
         let item = doc.data();
         item.id = doc.id;
         roomlist.push(item);
       })
-      this.setState({roomlist});
-      console.log(roomlist);
+      if(!this.state.renderlist) {
+        this.renderList(1, roomlist);
+      }
+      this.setState({ roomlist, loading: false });
     })
   }
 
-  componentWillUnmount = () => {
-    this.publicRef();
+  renderList = (page, data) => {
+    let temp = [];
+    let max = this.state.pageSize * page;
+    let min = ((page - 1) * this.state.pageSize);
+    for(let i = min; i < max; i++) {
+      if(data[i]) temp.push(data[i]);
+      else break;
+    }
+    this.setState({page, renderlist: temp});
   }
 
   render() {
-
-    const listData = [];
-    for (let i = 0; i < 5; i++) {
-      listData.push({
-        href: 'http://ant.design',
-        title: `Room #${i}`,
-        avatar: 'https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png',
-        description: 'Quick info about room',
-        content: 'List of tags can go here',
-      });
-    }
-
     const pagination = {
-      pageSize: 10,
-      current: 1,
-      total: listData.length,
-      onChange: (() => {}),
+      hideOnSinglePage: true,
+      pageSize: this.state.pageSize,
+      current: this.state.page,
+      total: this.state.roomlist.length,
+      showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+      onChange: page => this.renderList(page, this.state.roomlist),
     };
 
     const IconText = ({ type, text }) => (
       <span>
-        <Icon type={type} style={{ marginRight: 8 }} />
+        <Icon type={type} style={{ marginRight: 5 }} />
         {text}
       </span>
     );
@@ -57,25 +67,41 @@ class RoomLanding extends Component {
       <div>
         <Row justify="center" align="middle" type="flex">
           <Col sm={24} md={24} lg={24} xl={20}>
-            <List
-              header="Public Rooms"
-              bordered={true}
-              pagination={pagination}
-              dataSource={listData}
-              renderItem={item => (
-                <List.Item
-                  key={item.title}
-                  actions={[<IconText type="star-o" text="156" />, <IconText type="like-o" text="156" />, <IconText type="message" text="2" />]}
-                >
-                  <List.Item.Meta
-                    avatar={<Avatar src={item.avatar} />}
-                    title={<a href={item.href}>{item.title}</a>}
-                    description={item.description}
-                  />
-                  {item.content}
-                </List.Item>
-              )}
-            />
+            {this.state.renderlist &&
+              <div>
+                {this.state.renderlist.length > 0 ?
+                <List
+                  loading={this.state.loading}
+                  header={<div>Public Rooms <Button className="right" style={{marginTop: -5}} onClick={this.getList} disabled={this.state.loading}>{!this.state.loading ? <Icon type="sync"/>:<Icon type="loading"/>}</Button></div>}
+                  bordered={true}
+                  pagination={pagination}
+                  dataSource={this.state.renderlist}
+                  renderItem={item => (
+                    <List.Item
+                      key={item.id}
+                      actions={item.isOpen
+                        ?
+                        [<IconText type="user" text={`${item.participantCount}/${item.capacity}`} />,
+                        <Popover visible={this.state.queuePopover} onVisibleChange={v => this.setState({queuePopover: v})} content={<p>Anyone can queue up items to play</p>} title="Open Queue Enabled" trigger="click">
+                        <Icon onClick={() => this.setState({queuePopover: true})} type="team"/>
+                        </Popover>]
+                        :
+                        [<IconText type="user" text={`${item.participantCount}/${item.capacity}`} />]
+                      }>
+                      <List.Item.Meta
+                        avatar={<Avatar icon={item.ownerPic ? null : 'user'} src={item.ownerPic} />}
+                        title={`${item.name}'s Room`}
+                        description={<span className="truncate">{item.description}</span>}
+                      />
+                      <Link to={`room/${item.name}`}><Button type="primary">Join Room</Button></Link>
+                    </List.Item>
+                  )}
+                />
+                :
+                <p className="center">No public rooms found :(</p>
+                }
+              </div>
+            }
           </Col>
         </Row>
       </div>

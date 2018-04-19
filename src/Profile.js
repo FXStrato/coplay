@@ -224,7 +224,7 @@ class Profile extends Component {
             this.setState({loading: false});
             message.error(err.message);
             console.log(err);
-          })  
+          })
         }
       })
     }).catch(err => {
@@ -275,7 +275,7 @@ class Profile extends Component {
                           action="//jsonplaceholder.typicode.com/posts/"
                           onPreview={this.handlePreview}
                           onChange={this.handleChange}
-
+                          onBeforeUpload={() => {return false}}
                           >
                             {!this.state.pic &&
                             <div>
@@ -297,13 +297,6 @@ class Profile extends Component {
                       <Modal title="Changing Password" visible={this.state.change} footer={null} onCancel={() => this.setState({change: false})}>
                         <ChangePassword callback={this.handleCallback}/>
                       </Modal>
-                    </Col>
-                  </Row>
-                </TabPane>
-                <TabPane tab={<span><Icon type="laptop" />Room Settings</span>} key="2">
-                  <Row>
-                    <Col xs={24} sm={24} md={18} lg={12} xl={6}>
-                      Tab 2, Room settings
                     </Col>
                   </Row>
                 </TabPane>
