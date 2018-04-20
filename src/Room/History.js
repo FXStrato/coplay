@@ -6,7 +6,8 @@ import firebase from 'firebase';
 import moment from 'moment';
 import 'moment-duration-format';
 const db = firebase.firestore();
-
+const settings = {timestampsInSnapshots: true};
+db.settings(settings);
 
 class History extends Component {
   state = {
@@ -64,7 +65,7 @@ class History extends Component {
       let max = this.state.pageSize * this.state.page;
       let min = max - this.state.pageSize;
       if(index >= min && index <= max - 1) {
-        let diff = moment(el.timestamp).fromNow();
+        let diff = moment(el.timestamp.toDate()).fromNow();
         let duration = this.formatDuration(el.duration);
         return <List.Item key={`listitem-${el.fbid}`}
            actions={[<Popconfirm title="Remove from history?" onConfirm={(e) => this.handleDelete(el.fbid, index)}><Button loading={el.isLoading}>{!el.isLoading && <Icon type="delete"/>}</Button></Popconfirm>]}
@@ -96,10 +97,16 @@ class History extends Component {
   handleMassDelete = () => {
     this.setState({listLoading: true});
     db.collection('rooms').doc(this.props.fbid).collection('history').get().then(snap => {
+      let batch = db.batch();
       snap.forEach(doc => {
-        db.collection('rooms').doc(this.props.fbid).collection('history').doc(doc.id).delete();
+        batch.delete(db.collection('rooms').doc(this.props.fbid).collection('queue').doc(doc.id))
+      });
+      batch.commit().then(() => {
+        this.setState({listLoading: false});
+      }).catch(err => {
+        console.log(err);
+        this.setState({listLoading: false});
       })
-      this.setState({listLoading: false});
     }).catch(err => {
       this.setState({listLoading: false});
       console.log(err);

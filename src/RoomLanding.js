@@ -3,6 +3,8 @@ import { Row, Col, List, Icon, Avatar, Button, Popover } from 'antd';
 import { Link } from 'react-router-dom';
 import firebase from 'firebase';
 const db = firebase.firestore();
+const settings = {timestampsInSnapshots: true};
+db.settings(settings);
 
 class RoomLanding extends Component {
 

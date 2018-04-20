@@ -7,6 +7,8 @@ import Img from 'react-image';
 const TabPane = Tabs.TabPane;
 const FormItem = Form.Item;
 const db = firebase.firestore();
+const settings = {timestampsInSnapshots: true};
+db.settings(settings);
 const storage = firebase.storage();
 const ChangePassword = Loadable({
   loader: () =>

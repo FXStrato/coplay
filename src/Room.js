@@ -4,6 +4,8 @@ import firebase from 'firebase';
 import Loadable from 'react-loadable';
 import Loading from './Loading';
 const db = firebase.firestore();
+const settings = {timestampsInSnapshots: true};
+db.settings(settings);
 const TabPane = Tabs.TabPane;
 const Current = Loadable({
   loader: () =>
@@ -23,11 +25,6 @@ const History = Loadable({
 const Queue = Loadable({
   loader: () =>
     import('./Room/Queue'),
-  loading: Loading
-});
-const Playlists = Loadable({
-  loader: () =>
-    import('./Room/Playlists'),
   loading: Loading
 });
 const Participants = Loadable({
@@ -98,10 +95,10 @@ class Room extends Component {
             }
           });
 
-          this.partyRef = db.collection("rooms").doc(snap.docs[0].id).collection("participants").onSnapshot(snap => {
-            db.collection("rooms").doc(snap.docs[0].id).update({participantCount: snap.docs.length});
-            if(data.isPublic) db.collection("public").doc(snap.docs[0].id).update({participantCount: snap.docs.length});
-            this.setState({participants: snap, participantCount: snap.docs.length});
+          this.partyRef = db.collection("rooms").doc(snap.docs[0].id).collection("participants").onSnapshot(snup => {
+            db.collection("rooms").doc(snap.docs[0].id).update({participantCount: snup.docs.length});
+            if(data.isPublic) db.collection("public").doc(snap.docs[0].id).update({participantCount: snup.docs.length});
+            this.setState({participants: snup, participantCount: snup.docs.length});
           })
 
           this.queueRef = db.collection("rooms").doc(snap.docs[0].id).collection("queue").onSnapshot(snap => {
@@ -152,9 +149,8 @@ class Room extends Component {
                     <TabPane tab={<span>Search</span>} key="2"><Search fbid={this.state.fbid}/></TabPane>
                     <TabPane tab={<span>Queue {this.state.queueSize > 0 && <Badge count={this.state.queueSize} style={{ backgroundColor: '#fff', color: '#999', boxShadow: '0 0 0 1px #d9d9d9 inset' }}/>}</span>} key="3"><Queue fbid={this.state.fbid}/></TabPane>
                     <TabPane tab={<span>History</span>} key="4"><History fbid={this.state.fbid}/></TabPane>
-                    <TabPane tab={<span>Playlists</span>} key="5"><Playlists fbid={this.state.fbid}/></TabPane>
-                    <TabPane tab={<span>Participants</span>} key="6"><Participants owner={this.state.room.owner} list={this.state.participants}/></TabPane>
-                    <TabPane tab={<span>Settings</span>} key="7">{this.state.tab === "7" ? <RoomSettings user={this.state.user} roomID={this.state.roomID}/>: null}</TabPane>
+                    <TabPane tab={<span>Participants</span>} key="5"><Participants owner={this.state.room.owner} list={this.state.participants}/></TabPane>
+                    <TabPane tab={<span>Settings</span>} key="6">{this.state.tab === "6" ? <RoomSettings user={this.state.user} roomID={this.state.roomID}/>: null}</TabPane>
                   </Tabs>
                 </Card>
               </Col>

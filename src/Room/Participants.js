@@ -12,7 +12,7 @@ class Participants extends Component {
         key: doc.id,
         name: doc.data().name,
         rank: "",
-        joined: moment(doc.data().timestamp).fromNow(),
+        joined: moment(doc.data().timestamp.toDate()).fromNow(),
         photoURL: doc.data().photoURL
       };
       result.push(temp);

@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Row, Col, Input, List, message, Spin, Button, Popconfirm, Modal, Progress } from 'antd';
+import { Row, Col, Input, List, message, Spin, Button, Popconfirm, Modal, Progress, Icon } from 'antd';
 import ProgressiveImage from 'react-progressive-image-loading';
 import Img from 'react-image';
 import LazyLoad from 'react-lazyload';
@@ -8,6 +8,8 @@ import moment from 'moment';
 import 'moment-duration-format';
 const SearchInput = Input.Search;
 const db = firebase.firestore();
+const settings = {timestampsInSnapshots: true};
+db.settings(settings);
 
 class Search extends Component {
 
@@ -23,6 +25,7 @@ class Search extends Component {
     modalLoad: false,
     modalData: null,
     percent: 0,
+    percentText: null,
   }
 
   renderList = (data, durations) => {
@@ -37,7 +40,7 @@ class Search extends Component {
             extra={<LazyLoad height={'100%'} overflow={true}>
               <ProgressiveImage preview={el.snippet.thumbnails.medium.url} src={el.snippet.thumbnails.medium.url} render={(src, style) => <Img className="list-image list-shadow" style={style} src={src} alt={`${el.id.videoId}-thumbnail`}/>}/></LazyLoad>}>
             <List.Item.Meta
-              title={el.snippet.title}
+              title={<span>{el.snippet.title} {el.isAdded && <Icon className="animated fadeIn" type="check-circle"/>}</span>}
               description={el.snippet.description && el.snippet.description.substring(0, 100) + '...'}
             />
             <div>
@@ -57,20 +60,22 @@ class Search extends Component {
       this.setState({modal: true});
       this.getPlaylist(playlistId, null).then(res => {
         res.index = index;
+        res.playlistId = playlistId;
         temp.items[index].isLoading = false;
         temp.items[index].isAdded = false;
         this.setState({ data: temp, modalData: res});
-        console.log(res);
+        //console.log(res);
       })
     } else if(this.state.modalData && this.state.modalData.index !== index) {
       this.setState({modal: true, modalData: null});
       this.getPlaylist(playlistId, null).then(res => {
         res.index = index;
+        res.playlistId = playlistId;
         temp.items[index].isLoading = false;
         temp.items[index].isAdded = false;
         this.setState({ data: temp, modalData: res });
         this.setState({});
-        console.log(res);
+        //console.log(res);
       })
     } else {
       this.setState({modal: true});
@@ -78,51 +83,109 @@ class Search extends Component {
   }
 
   handlePlaylistAdd = () => {
-    this.setState({modalLoad: true});
-
+    this.setState({modalLoad: true, percent: 0});
+    db.collection('rooms').doc(this.props.fbid).collection('queue').get().then(doc => {
+      if(doc.size < 1000 && doc.size + this.state.modalData.pageInfo.totalResults <= 1000) {
+        let user = firebase.auth().currentUser || null;
+        this.playlistAddHelper(this.state.modalData.playlistId, this.state.modalData.nextPageToken, 0, user);
+      } else {
+        this.setState({modalLoad: false});
+        message.error('Queue capacity reached, unable to add songs in playlist');
+      }
+    });
   }
 
-  //TODO: Figure out how to batch add from playlist
-  playlistAddHelper = () => {
-    let batch = db.batch();
-    let qRef = db.collection('rooms').doc(this.props.fbid).collection('queue').doc();
-    if(!this.state.modalData.nextPageToken) {
-      //don't need to get more pages
-      this.state.modalData.items.forEach((el, index) => {
-
+  //TODO: Figure out how to batch add from playlist AND ALSO GET DURATIONS FOR EACH OF THE VIDEOS FUCK
+  playlistAddHelper = (playlistId, nextPageToken, total, user) => {
+    this.getPlaylist(playlistId, nextPageToken).then(res => {
+      let totalpercent = res.pageInfo.totalResults;
+      let cleanList = [];
+      res.items.forEach(el => {
+        if(el.snippet.description !== 'This video is unavailable.') cleanList.push(el);
       })
-    } else {
-
-    }
+      res.items = cleanList;
+      this.getDurations(res, true).then(dura => {
+        this.handlePercent(Math.round(dura.items.length / 2), totalpercent);
+        let batch = db.batch();
+        //firebase.firestore.FieldValue.serverTimestamp()
+        res.items.forEach((el, index) => {
+          if(el.snippet.description !== 'This video is unavailable.') {
+            let qRef = db.collection('rooms').doc(this.props.fbid).collection('queue').doc();
+            batch.set(qRef, {
+              url: 'https://www.youtube.com/watch?v=' + el.contentDetails.videoId + '&list=' + el.contentDetails.videoId,
+              title: el.snippet.title,
+              description: el.snippet.description,
+              thumbnails: el.snippet.thumbnails,
+              channelTitle: el.snippet.channelTitle,
+              duration: dura.items[index].contentDetails.duration,
+              videoId: el.contentDetails.videoId,
+              timestamp: new Date(),
+              adder: user ? user.displayName : 'Anon'
+            });
+            total++;
+          }
+        })
+        batch.commit().then(() => {
+          this.handlePercent(Math.round(dura.items.length / 2), totalpercent);
+          if(nextPageToken) this.playlistAddHelper(playlistId, res.nextPageToken, total, user);
+          else {
+            setTimeout(() => {
+              let temp = this.state.data;
+              temp.items[this.state.modalData.index].isLoading = false;
+              temp.items[this.state.modalData.index].isAdded = true;
+              this.setState({ data: temp, modalLoad: false, modal: false});
+              message.success(`${total} videos from ${this.state.data.items[this.state.modalData.index].snippet.title} added to queue`);
+              return true;
+            }, 500);
+          }
+        }).catch(err => {
+          this.setState({modalLoad: false});
+          message.error(`Error occurred uploading batch write, check console for more details`);
+          console.log(err);
+          return false;
+        })
+      }).catch(err => {
+        this.setState({modalLoad: false});
+        message.error(`Error occurred obtaining durations for playlist items`);
+        console.log(err);
+        return false;
+      })
+    })
   }
 
   handleAdd = (index) => {
-    let user = firebase.auth().currentUser || null;
-    let temp = this.state.data;
-    temp.items[index].isLoading = true;
-    this.setState({ data: temp });
-    db.collection("rooms").doc(this.props.fbid).collection("queue").add({
-      url: 'https://www.youtube.com/watch?v=' + temp.items[index].id.videoId + '&list=' + temp.items[index].id.videoId,
-      title: temp.items[index].snippet.title,
-      description: temp.items[index].snippet.description,
-      thumbnails: temp.items[index].snippet.thumbnails,
-      channelTitle: temp.items[index].snippet.channelTitle,
-      videoId: temp.items[index].id.videoId,
-      duration: this.state.durations.items[index].contentDetails.duration,
-      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-      adder: user ? user.displayName : 'Anon'
-    }).then(ref => {
-      temp.items[index].isLoading = false;
-      temp.items[index].isAdded = true;
-      this.setState({ data: temp });
-      message.success(`${temp.items[index].snippet.title} added to queue`);
-    }).catch(err => {
-      temp.items[index].isLoading = false;
-      temp.items[index].isAdded = false;
-      this.setState({ data: temp });
-      message.error(`${temp.items[index].snippet.title} unable to be added, check console for error`);
-      console.log(err);
-    });
+    db.collection('rooms').doc(this.props.fbid).collection('queue').get().then(doc => {
+      if(doc.size < 1000) {
+        let user = firebase.auth().currentUser || null;
+        let temp = this.state.data;
+        temp.items[index].isLoading = true;
+        this.setState({ data: temp });
+        db.collection("rooms").doc(this.props.fbid).collection("queue").add({
+          url: 'https://www.youtube.com/watch?v=' + temp.items[index].id.videoId + '&list=' + temp.items[index].id.videoId,
+          title: temp.items[index].snippet.title,
+          description: temp.items[index].snippet.description,
+          thumbnails: temp.items[index].snippet.thumbnails,
+          channelTitle: temp.items[index].snippet.channelTitle,
+          videoId: temp.items[index].id.videoId,
+          duration: this.state.durations.items[index].contentDetails.duration,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          adder: user ? user.displayName : 'Anon'
+        }).then(ref => {
+          temp.items[index].isLoading = false;
+          temp.items[index].isAdded = true;
+          this.setState({ data: temp });
+          message.success(`${temp.items[index].snippet.title} added to queue`);
+        }).catch(err => {
+          temp.items[index].isLoading = false;
+          temp.items[index].isAdded = false;
+          this.setState({ data: temp });
+          message.error(`${temp.items[index].snippet.title} unable to be added, check console for error`);
+          console.log(err);
+        });
+      } else {
+        message.error('Queue capacity reached, unable to add more videos');
+      }
+    })
   }
 
   handleSearch = (value) => {
@@ -130,7 +193,7 @@ class Search extends Component {
     this.getResults(value, null).then(res => {
       if (!res.error) {
         this.setState({ data: res });
-        this.getDurations(res).then(res => {
+        this.getDurations(res, false).then(res => {
           if (!res.error) {
             let newData = this.state.data;
             newData.items = newData.items.map((el) => {
@@ -174,7 +237,7 @@ class Search extends Component {
             let newData = this.state.data;
             newData.nextPageToken = res.nextPageToken;
             newData.items = newData.items.concat(res.items);
-            this.getDurations(res).then(response => {
+            this.getDurations(res, false).then(response => {
               if (!response.error) {
                 let newDurations = this.state.durations;
                 newDurations.items = newDurations.items.concat(response.items);
@@ -200,6 +263,14 @@ class Search extends Component {
     }
   }
 
+  handlePercent = (increment, total) => {
+    let percent = this.state.percent;
+    let addition = Math.round(increment / total * 100);
+    if(percent + addition > 100) percent = 100;
+    else percent += addition;
+    this.setState({percent});
+  }
+
   handleDelete = () => {
     this.setState({data: null, durations: null, loadedNumber: 0})
   }
@@ -223,17 +294,28 @@ class Search extends Component {
     }
   }
 
-  async getDurations(data) {
+  async getDurations(data, playlist) {
     try {
-      //Acquire list of youtube video ids from search
       let idsStr = "";
-      data.items.forEach((el, index) => {
-        if (index === data.items.length - 1) {
-          idsStr += el.id.videoId;
-        } else {
-          idsStr += el.id.videoId + ",";
-        }
-      });
+      if(!playlist) {
+        //Acquire list of youtube video ids from search
+        data.items.forEach((el, index) => {
+          if (index === data.items.length - 1) {
+            idsStr += el.id.videoId;
+          } else {
+            idsStr += el.id.videoId + ",";
+          }
+        });
+      } else {
+        data.items.forEach((el, index) => {
+          if (index === data.items.length - 1) {
+            idsStr += el.contentDetails.videoId;
+          } else {
+            idsStr += el.contentDetails.videoId + ",";
+          }
+        });
+      }
+
       let url = "https://www.googleapis.com/youtube/v3/videos";
       url += "?key=" + process.env.REACT_APP_YOUTUBEAPIKEY;
       url += "&part=contentDetails";
@@ -331,12 +413,17 @@ class Search extends Component {
           </Row>
           <Row style={{marginTop: 10}}>
             <Col span={24}>
+              {m.pageInfo.totalResults < 50 ?
               <p className="center">Confirm adding {m.pageInfo.totalResults} video(s) to the playlist.</p>
+              :
+              <p className="center">There are {m.pageInfo.totalResults} videos that will be added to the playlist. Do you wish to continue?</p>
+              }
             </Col>
           </Row>
           {this.state.modalLoad &&
           <Row style={{marginTop: 10}}>
             <Col span={24}>
+              <div>{this.state.percentText}</div>
               <Progress percent={this.state.percent}/>
             </Col>
           </Row>

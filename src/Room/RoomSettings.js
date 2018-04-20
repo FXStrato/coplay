@@ -4,6 +4,8 @@ import firebase from 'firebase';
 const FormItem = Form.Item;
 const { TextArea } = Input;
 const db = firebase.firestore();
+const settings = {timestampsInSnapshots: true};
+db.settings(settings);
 
 class RoomSettings extends Component {
 

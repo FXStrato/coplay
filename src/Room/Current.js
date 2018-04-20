@@ -6,6 +6,8 @@ import firebase from 'firebase';
 import moment from 'moment';
 import 'moment-duration-format';
 const db = firebase.firestore();
+const settings = {timestampsInSnapshots: true};
+db.settings(settings);
 const playerSettings = {
   youtube: {
     playerVars: {
