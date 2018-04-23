@@ -21,6 +21,10 @@ let config = {
 };
 firebase.initializeApp(config);
 
+const db = firebase.firestore();
+const settings = {/* your settings... */ timestampsInSnapshots: true};
+db.settings(settings);
+
 
 ReactDOM.render(<Router><App/></Router>, document.getElementById('root'));
 registerServiceWorker();

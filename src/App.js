@@ -234,7 +234,7 @@ class App extends Component {
           }}>
           <Switch>
             <Route exact={true} path="/" render={props => <Home {...props} callback={this.signUpCallback}/>}/>
-            <Route exact={true} path="/rooms" component={RoomLanding}/>
+            <Route exact={true} path="/rooms" render={props => <RoomLanding user={this.state.user}/>}/>
             <Route exact={true} path="/room/:roomID" component={Room}/>
             <Route exact={true} path="/profile" render={props => <Profile {...props} callback={this.profileCallback}/>}/>
             <Route exact={true} path="/about" component={About}/>

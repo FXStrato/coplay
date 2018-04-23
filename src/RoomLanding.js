@@ -15,6 +15,14 @@ class RoomLanding extends Component {
     page: 1,
     pageSize: 10,
     queuePopover: false,
+    user: this.props.user
+  }
+
+  componentWillReceiveNewProps = (next, prev) => {
+    if(next.user && !this.state.user) {
+      this.setState({user: next.user});
+      this.renderList();
+    }
   }
 
   componentWillMount = () => {
@@ -92,7 +100,7 @@ class RoomLanding extends Component {
                       }>
                       <List.Item.Meta
                         avatar={<Avatar icon={item.ownerPic ? null : 'user'} src={item.ownerPic} />}
-                        title={`${item.name}'s Room`}
+                        title={<span>{item.name}'s Room {this.props.user.uid === item.owner ? <Icon type="star"/> : null}</span>}
                         description={<span className="truncate">{item.description}</span>}
                       />
                       <Link to={`room/${item.name}`}><Button type="primary">Join Room</Button></Link>

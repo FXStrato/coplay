@@ -99,7 +99,7 @@ class History extends Component {
     db.collection('rooms').doc(this.props.fbid).collection('history').get().then(snap => {
       let batch = db.batch();
       snap.forEach(doc => {
-        batch.delete(db.collection('rooms').doc(this.props.fbid).collection('queue').doc(doc.id))
+        batch.delete(db.collection('rooms').doc(this.props.fbid).collection('history').doc(doc.id))
       });
       batch.commit().then(() => {
         this.setState({listLoading: false});
