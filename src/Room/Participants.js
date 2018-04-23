@@ -24,7 +24,7 @@ class Participants extends Component {
     const columns = [{
       title: 'Name',
       dataIndex: 'name',
-      render: (text, record) => <span><Avatar icon={record.photoURL ? null : 'user'} src={record.photoURL} style={{marginRight: 5}}/>{text} {this.props.owner === record.key ? <Icon style={{marginLeft: 2}} type="star"/>: null}</span>
+      render: (text, record) => <span><Avatar icon={record.photoURL ? null : 'user'} src={record.photoURL} style={{marginRight: 5}}/>{text} {this.props.owner === record.key ? <Icon style={{marginLeft: 2}} type="star"/> : null}</span>
     }]
     const pagination = {
       hideOnSinglePage: true,

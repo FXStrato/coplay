@@ -100,7 +100,7 @@ class RoomLanding extends Component {
                       }>
                       <List.Item.Meta
                         avatar={<Avatar icon={item.ownerPic ? null : 'user'} src={item.ownerPic} />}
-                        title={<span>{item.name}'s Room {this.props.user.uid === item.owner ? <Icon type="star"/> : null}</span>}
+                        title={<span>{item.name}'s Room {this.props.user && this.props.user.uid === item.owner ? <Icon type="star"/> : null}</span>}
                         description={<span className="truncate">{item.description}</span>}
                       />
                       <Link to={`room/${item.name}`}><Button type="primary">Join Room</Button></Link>

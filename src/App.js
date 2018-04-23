@@ -70,11 +70,27 @@ class App extends Component {
         firebase.database().ref('.info/connected').on('value', snap => {
           if(!snap.val()) {
             //firebase.firestore().doc('/status/' + user.uid).set({state: 'offline', last_seen: firebase.firestore.FieldValue.serverTimestamp()});
-            firebase.firestore().collection('rooms').doc(user.uid).collection('participants').doc(user.uid).delete();
             return;
           }
           //TODO: if disconnecting in a room, remove self from room party list
-          firebase.database().ref('/status/' + user.uid).onDisconnect().set({state: 'offline', last_seen: firebase.database.ServerValue.TIMESTAMP}).then(() => {
+
+          firebase.database().ref('/status/' + user.uid).onDisconnect().set({state: 'offline', last_seen: firebase.database.ServerValue.TIMESTAMP}, status => {
+            if(!status) {
+              //TODO: figure out how this works please the code below doesn't work when disconnecting
+              // if(this.props.location.pathname.includes('/room/')) {
+              //   //disconnecting in room, remove from participants
+              //   let roomName = this.props.location.pathname.split('/')[2];
+              //   firebase.firestore().collection('rooms').where('name', '==', roomName).get().then(snap => {
+              //     if(snap.docs.length === 1) {
+              //       let fbid = snap.docs[0].id;
+              //       firebase.firestore().collection('rooms').doc(fbid).collection('participants').doc(user.uid).delete();
+              //       firebase.firestore().collection("rooms").doc(fbid).update({participantCount: (snap.docs[0].data().participantCount - 1)});
+              //       if(snap.docs[0].data().isPublic) firebase.firestore().collection("public").doc(fbid).update({participantCount: (snap.docs[0].data().participantCount - 1)});
+              //     }
+              //   });
+              // }
+            }
+          }).then(() => {
             //firebase.firestore().doc('/status/' + user.uid).set({state: 'online', last_seen: firebase.firestore.FieldValue.serverTimestamp()});
             firebase.database().ref('/status/' + user.uid).set({state: 'online', last_seen: firebase.database.ServerValue.TIMESTAMP})
           })

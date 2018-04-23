@@ -63,7 +63,7 @@ class Room extends Component {
   componentWillMount = () => {
     let roomID = this.props.match.params.roomID;
     //If room exists, continue with load
-    db.collection('rooms').where('name', '==', roomID).get().then(snap => {
+    this.roomRef = db.collection('rooms').where('name', '==', roomID).onSnapshot(snap => {
       if(snap.docs.length === 1) {
         let data = snap.docs[0].data();
         //Check Capacity
@@ -91,10 +91,11 @@ class Room extends Component {
                 this.setState({initialLoad: true});
               });
             } else {
-              this.setState({initialLoad: true});
+              this.setState({initialLoad: true, user: {isAnonymous: true}});
             }
           });
 
+          //TODO: Move this over the firebase functions; once someone adds themselves to the participant list, +1 to the participantCount
           this.partyRef = db.collection("rooms").doc(snap.docs[0].id).collection("participants").onSnapshot(snup => {
             db.collection("rooms").doc(snap.docs[0].id).update({participantCount: snup.docs.length});
             if(data.isPublic) db.collection("public").doc(snap.docs[0].id).update({participantCount: snup.docs.length});
@@ -118,7 +119,8 @@ class Room extends Component {
   }
 
   componentWillUnmount = () => {
-    if(this.state.user) {
+    this.roomRef();
+    if(this.state.user.uid) {
       db.collection("rooms").doc(this.state.fbid).collection("participants").doc(this.state.user.uid).delete();
       db.collection("rooms").doc(this.state.fbid).update({participantCount: (this.state.participantCount - 1)});
       if(this.state.room.isPublic) db.collection("public").doc(this.state.fbid).update({participantCount: (this.state.participantCount - 1)});
@@ -146,11 +148,11 @@ class Room extends Component {
                 <Card style={{width: '100%'}}>
                   <Tabs defaultActiveKey="1" onChange={this.onTabChange} tabPosition={this.state.tabPosition} size={this.state.tabSize}>
                     <TabPane tab={<span>Now Playing</span>} key="1"><Current fbid={this.state.fbid}/></TabPane>
-                    <TabPane tab={<span>Search</span>} key="2"><Search fbid={this.state.fbid}/></TabPane>
+                    {!this.state.room.isOpen && this.state.user && this.state.user.isAnonymous ? null : <TabPane tab={<span>Search</span>} key="2"><Search fbid={this.state.fbid}/></TabPane>}
                     <TabPane tab={<span>Queue {this.state.queueSize > 0 && <Badge count={this.state.queueSize} style={{ backgroundColor: '#fff', color: '#999', boxShadow: '0 0 0 1px #d9d9d9 inset' }}/>}</span>} key="3"><Queue fbid={this.state.fbid}/></TabPane>
                     <TabPane tab={<span>History</span>} key="4"><History fbid={this.state.fbid}/></TabPane>
                     <TabPane tab={<span>Participants</span>} key="5"><Participants owner={this.state.room.owner} list={this.state.participants}/></TabPane>
-                    <TabPane tab={<span>Settings</span>} key="6">{this.state.tab === "6" ? <RoomSettings user={this.state.user} roomID={this.state.roomID}/>: null}</TabPane>
+                    {this.state.user && this.state.user.uid === this.state.room.owner ? <TabPane tab={<span>Settings</span>} key="6">{this.state.tab === "6" ? <RoomSettings user={this.state.user} roomID={this.state.roomID}/>: null}</TabPane> : null}
                   </Tabs>
                 </Card>
               </Col>
